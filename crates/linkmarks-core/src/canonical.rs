@@ -9,7 +9,7 @@
 //! same output bytes across runs, platforms, and processes. This is
 //! the dedupe key and must be stable.
 
-use crate::errors::CoreError;
+use crate::{canonical_config::CanonicalConfig, errors::CoreError};
 use thiserror::Error;
 use url::{Host, Url};
 
@@ -27,13 +27,29 @@ pub enum CanonicalizeError {
 /// Tracking-parameter blocklist. Lowercased. Matched as a *prefix* for
 /// `utm_*` and `mc_*`, and as an *exact* match for the rest.
 ///
-/// Sources:
-/// - Google Analytics (`utm_*` since ~2005)
-/// - Facebook (`fbclid`)
-/// - Google Ads (`gclid`)
-/// - Mailchimp (`mc_eid`, `mc_cid`)
-/// - Generic referrer (`ref`, `ref_src`)
-pub const TRACKING_PARAMS: &[&str] = &["fbclid", "gclid", "ref", "ref_src", "mc_eid", "mc_cid"];
+/// Sources and rationale are documented in ADR 0002.
+pub const TRACKING_PARAMS: &[&str] = &[
+    "fbclid",
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "msclkid",
+    "dclid",
+    "yclid",
+    "twclid",
+    "li_fat_id",
+    "igshid",
+    "ttclid",
+    "ref",
+    "ref_src",
+    "ref_url",
+    "source",
+    "spm",
+    "scm",
+    "_hsenc",
+    "_hsmi",
+    "mkt_tok",
+];
 
 /// Canonicalize a URL string.
 ///
@@ -56,6 +72,14 @@ pub const TRACKING_PARAMS: &[&str] = &["fbclid", "gclid", "ref", "ref_src", "mc_
 /// The original URL is **never** modified — `Bookmark::original_url`
 /// preserves it verbatim.
 pub fn canonicalize(input: &str) -> Result<String, CanonicalizeError> {
+    canonicalize_with(input, &CanonicalConfig::default_rules())
+}
+
+/// Canonicalize using explicit per-domain preservation rules.
+pub fn canonicalize_with(
+    input: &str,
+    config: &CanonicalConfig,
+) -> Result<String, CanonicalizeError> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return Err(CanonicalizeError::Parse("empty url".into()));
@@ -110,7 +134,7 @@ pub fn canonicalize(input: &str) -> Result<String, CanonicalizeError> {
         .query_pairs()
         .filter_map(|(k, v)| {
             let key_lc = k.to_ascii_lowercase();
-            if is_tracking(&key_lc) {
+            if is_tracking(&key_lc) && !config.is_preserved(url.host_str().unwrap_or(""), &key_lc) {
                 None
             } else {
                 Some((key_lc, v.into_owned()))
@@ -169,6 +193,7 @@ pub fn canonicalize_for_core(input: &str) -> Result<String, CoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::canonical_config::{CanonicalConfig, DomainRules};
 
     #[test]
     fn lowercases_scheme_and_host() {
@@ -277,5 +302,62 @@ mod tests {
         assert!(is_tracking("fbclid"));
         assert!(!is_tracking("id"));
         assert!(!is_tracking("page"));
+    }
+
+    #[test]
+    fn preserves_functional_params_by_default() {
+        // YouTube `t` is seconds offset (functional), NOT tracking.
+        // `v` is video ID. Both must round-trip.
+        let out = canonicalize("https://www.youtube.com/watch?v=abc&t=120s").unwrap();
+        assert!(out.contains("t=120s"), "functional param dropped: {out}");
+        assert!(out.contains("v=abc"), "functional param dropped: {out}");
+    }
+
+    #[test]
+    fn drops_tracking_even_when_functional_id_present() {
+        // `fbclid` is tracking even when sibling param `id` is preserved.
+        let out = canonicalize("https://example.com/p?id=42&fbclid=xyz").unwrap();
+        assert_eq!(out, "https://example.com/p?id=42");
+    }
+
+    #[test]
+    fn per_domain_config_overrides_tracking_default() {
+        let mut config = CanonicalConfig::default_rules();
+        config.domains.insert(
+            "amazon.com".to_string(),
+            DomainRules {
+                preserve_params: vec!["tag".to_string()],
+            },
+        );
+        let out = canonicalize_with("https://amazon.com/dp/B07?ref=x&tag=lo-20", &config).unwrap();
+        assert!(
+            out.contains("tag=lo-20"),
+            "domain-override param dropped: {out}"
+        );
+        assert!(
+            !out.contains("ref=x"),
+            "non-preserved tracking leaked: {out}"
+        );
+    }
+
+    #[test]
+    fn always_functional_params_survive_global_blocklist() {
+        // `source` IS in the blocklist, but for a domain that uses it
+        // functionally (e.g. a code search engine with `source=github`
+        // filter), the config must override. Test the override path.
+        let mut config = CanonicalConfig::default_rules();
+        config.domains.insert(
+            "grep.app".to_string(),
+            DomainRules {
+                preserve_params: vec!["source".to_string()],
+            },
+        );
+        let out =
+            canonicalize_with("https://grep.app/search?q=foo&source=github", &config).unwrap();
+        assert!(
+            out.contains("source=github"),
+            "domain override failed: {out}"
+        );
+        assert!(out.contains("q=foo"), "functional q dropped: {out}");
     }
 }
