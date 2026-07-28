@@ -1,0 +1,5 @@
+# LinkMarks — default owners
+# All paths route to the maintainer until a co-maintainer joins.
+*       @loust
+/docs/  @loust
+/crates/ @loust

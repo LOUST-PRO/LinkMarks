@@ -1,0 +1,64 @@
+# LinkMarks — repository labels
+# Applied by `gh label sync -f .github/labels.yml` (or manually).
+
+- name: P0
+  color: b60205
+  description: Critical — broken release, data-loss risk, or security issue.
+- name: P1
+  color: d93f0b
+  description: High — must fix before next minor release.
+- name: P2
+  color: fbca04
+  description: Medium — fix when convenient.
+- name: P3
+  color: c5def5
+  description: Low — backlog / nice-to-have.
+
+- name: bug
+  color: d73a4a
+  description: Confirmed bug or reproducible incorrect behavior.
+- name: enhancement
+  color: a2eeef
+  description: New feature or capability.
+- name: documentation
+  color: 0075ca
+  description: Docs-only change (README, ADR, ROADMAP, SPEC, CONCERNS).
+- name: chore
+  color: cfd3d7
+  description: Build, tooling, dependency, or housekeeping change.
+
+- name: area:cli
+  color: 7057ff
+  description: Touches `linkmarks-cli` (commands, output formats, args).
+- name: area:core
+  color: 0e8a16
+  description: Touches `linkmarks-core` (model, traits, canonical, dedupe).
+- name: area:bridge
+  color: 1d76db
+  description: Touches a `linkmarks-bridge-*` crate.
+- name: area:server
+  color: bfd4f2
+  description: Touches `linkmarks-server` (Fase 3).
+- name: area:gui
+  color: e99695
+  description: Touches `linkmarks-gui` or `linkmarks-tui`.
+
+- name: status:in-progress
+  color: fef2c0
+  description: Active work, expected to land soon.
+- name: status:blocked
+  color: e99695
+  description: Blocked on a decision, dependency, or external input.
+- name: status:needs-review
+  color: 7057ff
+  description: PR or RFC awaiting maintainer review.
+
+- name: phase:v1
+  color: 0e8a16
+  description: Fase 1 — CLI MVP (visible).
+- name: phase:v2
+  color: 5319e7
+  description: Fase 2 — TUI + Firefox + multi-source.
+- name: phase:v3
+  color: 1d76db
+  description: Fase 3 — CRDT sync server.
