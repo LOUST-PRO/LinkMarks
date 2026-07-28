@@ -1,0 +1,70 @@
+{
+  "roots": {
+    "bookmark_bar": {
+      "type": "folder",
+      "name": "Bookmarks bar",
+      "date_added": "13350000000000000",
+      "date_last_used": "0",
+      "children": [
+        {
+          "type": "url",
+          "name": "Anonymized Article 1",
+          "url": "https://example.com/article-1",
+          "date_added": "13350000000000001"
+        },
+        {
+          "type": "folder",
+          "name": "Work",
+          "children": [
+            {
+              "type": "url",
+              "name": "Anonymized Doc A",
+              "url": "https://example.com/doc-a?utm_source=test&id=42",
+              "date_added": "13350000000000002"
+            },
+            {
+              "type": "url",
+              "name": "Anonymized Doc A (duplicate URL, different title)",
+              "url": "https://example.com/doc-a?id=42"
+            },
+            {
+              "type": "folder",
+              "name": "Research",
+              "children": [
+                {
+                  "type": "url",
+                  "name": "Anonymized Paper 2",
+                  "url": "HTTPS://Example.COM/paper-2/?ref=tracker#section-1",
+                  "date_added": "13350000000000003"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "url",
+          "name": "Anonymized Site 3",
+          "url": "https://example.com:443/site-3",
+          "date_added": "13350000000000004"
+        }
+      ]
+    },
+    "other": {
+      "type": "folder",
+      "name": "Other bookmarks",
+      "children": [
+        {
+          "type": "url",
+          "name": "Anonymized Misc 4",
+          "url": "https://example.com/misc-4",
+          "date_added": "13350000000000005"
+        }
+      ]
+    },
+    "synced": {
+      "type": "folder",
+      "name": "Mobile bookmarks",
+      "children": []
+    }
+  }
+}
