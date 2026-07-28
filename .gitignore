@@ -1,0 +1,25 @@
+# Build outputs
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local secrets (never commit)
+*.env
+*.env.local
+.envrc
+
+# LinkMarks local state (should never be committed)
+.linkmarks/
+*.linkmarks
+tests/fixtures/_private/

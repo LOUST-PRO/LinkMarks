@@ -1,0 +1,27 @@
+License — dual: AGPLv3 (open source) + commercial
+
+This software is dual-licensed. You may use it under either of:
+
+  1. GNU Affero General Public License v3.0 or later (AGPLv3+)
+     Full text: https://www.gnu.org/licenses/agpl-3.0.txt
+     SPDX-License-Identifier: AGPL-3.0-or-later
+
+  2. A separate commercial license. Contact opensource@loust.pro for terms.
+
+Why dual license?
+
+LinkMarks is a local-first bookmark manager whose optional sync relay
+is network-exposed. AGPLv3 clause 13 (network use is distribution)
+closes the SaaS-vector loophole: anyone who serves a modified
+LinkMarks over the network must release their modifications under
+AGPLv3+.
+
+The commercial license exists for cases where a third party needs
+proprietary deployment (e.g., embedded in a closed product, run as
+a hosted service with custom terms). Reach out before forking for
+those purposes.
+
+Copyright (c) 2026 David Alejandro Mireles Llamas.
+
+For commercial licensing inquiries, contact opensource@loust.pro.
+For AGPLv3 questions, see https://www.gnu.org/licenses/agpl-3.0.html.
