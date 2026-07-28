@@ -1,0 +1,9 @@
+# LinkMarks config (placed at ~/.config/linkmarks/config.toml)
+[canonical.domains]
+"youtube.com" = { preserve_params = ["t", "v", "list", "index", "si"] }
+"youtu.be" = { preserve_params = ["t", "si"] }
+"vimeo.com" = { preserve_params = ["t"] }
+"github.com" = { preserve_params = ["q", "tab", "type"] }
+"twitter.com" = { preserve_params = ["s", "src"] }
+"x.com" = { preserve_params = ["s", "src"] }
+"amazon.com" = { preserve_params = ["tag"] }
