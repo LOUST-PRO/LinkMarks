@@ -17,6 +17,10 @@ pub enum CoreError {
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 
+    /// SQLite storage error.
+    #[error("storage error: {0}")]
+    Storage(String),
+
     /// JSON parsing error.
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
