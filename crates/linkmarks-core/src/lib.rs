@@ -17,10 +17,12 @@
 #![deny(unsafe_code)]
 
 pub mod canonical;
+pub mod canonical_config;
 pub mod dedupe;
 pub mod errors;
 pub mod model;
 pub mod parser;
+pub mod storage;
 pub mod traits;
 
 pub use canonical::{canonicalize, CanonicalizeError};
