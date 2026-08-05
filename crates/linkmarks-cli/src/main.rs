@@ -6,6 +6,7 @@
 //! - `import` — import from a bridge source.
 //! - `export` — export to a sink format.
 //! - `dedupe` — local deterministic dedupe by canonical URL.
+//! - `tui`    — launch the interactive terminal browser (Fase 2 F4).
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -94,6 +95,8 @@ enum Commands {
     Export(cmd::export::ExportArgs),
     /// Dedupe by canonical URL with a conflict report.
     Dedupe(cmd::dedupe::DedupeArgs),
+    /// Launch the interactive terminal browser.
+    Tui(cmd::tui::TuiArgs),
 }
 
 fn main() -> Result<()> {
@@ -120,6 +123,7 @@ fn dispatch(cli: Cli, paths: Paths) -> Result<i32> {
         Commands::Import(args) => cmd::import::run(args, cli.format, paths),
         Commands::Export(args) => cmd::export::run(args, cli.format, paths),
         Commands::Dedupe(args) => cmd::dedupe::run(args, cli.format, paths),
+        Commands::Tui(args) => cmd::tui::execute(args, paths),
     }
 }
 
