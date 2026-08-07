@@ -1,0 +1,358 @@
+.\" linkmarks.1 — manual page for the LinkMarks CLI (Fase 2).
+.\"
+.\" Plain roff, -man macros. No pandoc, no asciidoctor. Keep it portable.
+.\" Render with: man -l docs/man/linkmarks.1
+.\"              groff -man -Tutf8 docs/man/linkmarks.1
+
+.TH LINKMARKS 1 "2026-08-05" "LinkMarks 1.0.0" "User Commands"
+
+.SH NAME
+linkmarks \- local\-first, deterministic bookmark manager
+
+.SH SYNOPSIS
+.B linkmarks
+[\fIGLOBAL\-OPTIONS\fR] \fICommand\fR [\fICOMMAND\-OPTIONS\fR] [\fIARGS\fR]
+
+.SH DESCRIPTION
+.B linkmarks
+imports, deduplicates, lists, and exports browser bookmarks without
+phoning home or requiring a server.
+It is a single static binary that follows the XDG Base Directory
+specification and stores data in a local SQLite database under WAL mode.
+
+The CLI has two layers:
+
+.TP
+.B Global options
+apply to every subcommand. They control output format (\fB\-\-format\fR),
+verbosity (\fB\-v\fR / \fB\-vv\fR), and the location of the SQLite store
+(\fB\-\-store\fR) and the TOML config file (\fB\-\-config\fR).
+
+.TP
+.B Subcommands
+each have their own scope and arguments. See
+.B SUBCOMMANDS
+below.
+
+.SH GLOBAL OPTIONS
+.TP
+.B \-\-format \fIFMT\fR
+Output format for the active command. One of
+.BR table " (default), " json ", or " yaml .
+.TP
+.B \-v
+Increase verbosity (info).
+Use twice (\fB\-vv\fR) for debug.
+.TP
+.B \-\-store \fIPATH\fR
+Override the SQLite store path. Defaults to the XDG data dir.
+May also be set via the \fBLINKMARKS_STORE\fR environment variable.
+.TP
+.B \-\-config \fIPATH\fR
+Override the config file path. Defaults to the XDG config dir.
+May also be set via the \fBLINKMARKS_CONFIG\fR environment variable.
+.TP
+.B \-\-help
+Print the global help text and exit.
+.TP
+.B \-\-version
+Print the version string and exit.
+
+.SH SUBCOMMANDS
+
+.SS linkmarks init
+Initialize the LinkMarks store and config directories.
+
+Creates the XDG data and config directories, writes a default
+\fBconfig.toml\fR if none is present, and opens the SQLite store
+(which stamps \fBPRAGMA user_version\fR after running the migrator).
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks init [\-\-data\-dir \fIPATH\fR] [\-\-config\-dir \fIPATH\fR] [\-\-force]
+.fi
+
+.TP
+.B \-\-data\-dir \fIPATH\fR
+Override the data directory (defaults to XDG).
+.TP
+.B \-\-config\-dir \fIPATH\fR
+Override the config directory (defaults to XDG).
+.TP
+.B \-\-force
+Overwrite an existing \fBconfig.toml\fR with the bundled defaults.
+Off by default. When the file is overwritten, the previous version
+is renamed to \fBconfig.toml.bak\fR.
+.RE
+
+.SS linkmarks list
+List bookmarks from a source or from the local store.
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks list [\-\-source \fINAME\fR] [\-\-path \fIPATH\fR] \\
+                 [\-\-limit \fIN\fR] [\-\-offset \fIN\fR]
+.fi
+
+.TP
+.B \-\-source \fINAME\fR
+Source to list from. One of:
+.RS
+.IP \(bu 2
+\fBstore\fR \(em read from the SQLite store (default once the store exists).
+.IP \(bu 2
+\fBchrome\fR \(em parse a Chromium-family \fBBookmarks\fR JSON file.
+.RE
+.TP
+.B \-\-path \fIPATH\fR
+Path to a source file. Required when \fB\-\-source=chrome\fR; otherwise
+the OS-typical Chrome path is used.
+.TP
+.B \-\-limit \fIN\fR
+Maximum rows to print (store source). Default: \fB100\fR.
+.TP
+.B \-\-offset \fIN\fR
+Row offset for pagination. Default: \fB0\fR.
+.RE
+
+.SS linkmarks import
+Import bookmarks from a source file into the local store.
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks import \-\-source \fINAME\fR \-\-path \fIPATH\fR \\
+                 [\-\-dry\-run] [\-\-fresh]
+.fi
+
+.TP
+.B \-\-source \fINAME\fR
+Source to import from. Currently \fBchrome\fR is supported
+(also covers Brave, Edge, Arc, Vivaldi, Opera).
+.TP
+.B \-\-path \fIPATH\fR
+Path to the source file.
+.TP
+.B \-\-dry\-run
+Parse and canonicalize but do not write the store.
+.TP
+.B \-\-fresh
+Overwrite the destination store with a fresh DB.
+Mutually exclusive with \fB\-\-dry\-run\fR.
+.RE
+
+.SS linkmarks export
+Export bookmarks to a sink format.
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks export [\-\-format \fINAME\fR] [\-\-source \fINAME\fR] \\
+                 [\-\-path \fIPATH\fR] [\-o, \-\-output \fIPATH\fR]
+.fi
+
+.TP
+.B \-\-format \fINAME\fR
+Output format. One of:
+.RS
+.IP \(bu 2
+\fBnetscape\fR (default) \(em emit a Netscape bookmark HTML file.
+.IP \(bu 2
+\fBjson\fR \(em emit NDJSON, one bookmark per line.
+.RE
+.TP
+.B \-\-source \fINAME\fR
+Source to export from. One of \fBstore\fR (default) or \fBchrome\fR.
+.TP
+.B \-\-output \fIPATH\fR
+Output path. Use \fB\-\fR to write to stdout. Default: \fB\-\fR.
+.RE
+
+.SS linkmarks dedupe
+Dedupe by canonical URL with a human-readable conflict report.
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks dedupe [\-\-source \fINAME\fR] [\-\-path \fIPATH\fR] \\
+                 [\-\-apply] [\-\-refresh\-canonical]
+.fi
+
+.TP
+.B \-\-source \fINAME\fR
+Source to dedupe. \fBstore\fR (default) reads the SQLite store;
+\fBchrome\fR parses a Chromium JSON file.
+.TP
+.B \-\-path \fIPATH\fR
+Path to a Chromium JSON source. Required for \fB\-\-source=chrome\fR.
+.TP
+.B \-\-apply
+Apply the merge. Without this flag, the command is dry-run only
+and only reports conflicts.
+.TP
+.B \-\-refresh\-canonical
+Recompute \fBcanonical_url\fR on every row by re-running the loader
+config. Useful after editing \fBconfig.toml\fR to tighten rules.
+.RE
+
+.SS linkmarks tui
+Launch the interactive terminal browser.
+
+.RS
+.nf
+\fBUsage:\fR  linkmarks tui [\-\-source \fINAME\fR] \\
+                 [\-\-netscape\-path \fIPATH\fR] \\
+                 [\-\-chromium\-path \fIPATH\fR]
+.fi
+
+The TUI presents three panes: a bookmark list (left), a detail pane
+(right), and a status bar (bottom). Vim-like bindings are supported
+(\fBj\fR / \fBk\fR / \fBg\fR / \fBG\fR / \fB?\fR / \fBq\fR / \fBEnter\fR / \fBr\fR)
+in addition to arrow keys, \fBPgUp\fR/\fBPgDn\fR, and \fBCtrl\-C\fR.
+
+Substring filter mode is toggled with \fB/\fR; \fBEsc\fR clears,
+\fBEnter\fR accepts.
+
+.TP
+.B \-\-source \fINAME\fR
+Source selection. One of:
+.RS
+.IP \(bu 2
+\fBall\fR (default) \(em merge every available source and dedupe by canonical URL.
+.IP \(bu 2
+\fBchrome\fR, \fBnetscape\fR, \fBfirefox\fR \(em restrict to that source only.
+.RE
+.TP
+.B \-\-netscape\-path \fIPATH\fR
+Override the Netscape HTML path used by the TUI source registry.
+.TP
+.B \-\-chromium\-path \fIPATH\fR
+Override the Chromium \fBBookmarks\fR JSON path used by the TUI source registry.
+.RE
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Partial success or source error.
+.TP
+.B 2
+Invalid arguments.
+.TP
+.B 3
+Dedupe conflicts found (non-fatal; review the report).
+
+.SH ENVIRONMENT
+.TP
+.B LINKMARKS_STORE
+Override the path to the SQLite store.
+Equivalent to \fB\-\-store\fR.
+.TP
+.B LINKMARKS_CONFIG
+Override the path to the TOML config file.
+Equivalent to \fB\-\-config\fR.
+.TP
+.B LINKMARKS_TUI_DEFAULT_SOURCE
+Default \fB\-\-source\fR value for \fBlinkmarks tui\fR.
+.TP
+.B RUST_LOG
+Standard \fBtracing\fR filter. Honoured on stderr. Default:
+\fBlinkmarks=warn,warn\fR. Try \fBRUST_LOG=linkmarks=debug\fR for verbose tracing.
+
+.SH FILES
+Paths follow the XDG Base Directory specification.
+
+.TP
+.I $XDG_DATA_HOME/linkmarks/store.db
+SQLite store (default:
+.BR $HOME/.local/share/linkmarks/store.db ).
+.TP
+.I $XDG_CONFIG_HOME/linkmarks/config.toml
+TOML config (default:
+.BR $HOME/.config/linkmarks/config.toml ).
+.TP
+.I $XDG_CONFIG_HOME/linkmarks/config.toml.bak
+Backup of the previous config written by \fBlinkmarks init \-\-force\fR.
+.TP
+.I /usr/local/share/man/man1/linkmarks.1
+System manpage once installed by the system packager (not managed
+by \fBscripts/install.sh\fR).
+
+.SH EXAMPLES
+.TP
+.B Initialize the local store with XDG defaults
+.PP
+.RS
+.nf
+linkmarks init
+.fi
+.RE
+
+.TP
+.B Import a Chromium Bookmarks JSON file
+.PP
+.RS
+.nf
+linkmarks import \-\-source=chrome \\
+    \-\-path ~/.config/google-chrome/Default/Bookmarks
+.fi
+.RE
+
+.TP
+.B List bookmarks from the local store as JSON
+.PP
+.RS
+.nf
+linkmarks list \-\-source=store \-\-format=json
+.fi
+.RE
+
+.TP
+.B Export to a Netscape HTML file
+.PP
+.RS
+.nf
+linkmarks export \-\-format=netscape \\
+    \-\-output ./bookmarks.html
+.fi
+.RE
+
+.TP
+.B Dedupe with a conflict report, then apply
+.PP
+.RS
+.nf
+linkmarks dedupe              # dry-run; review the report
+linkmarks dedupe \-\-apply     # commit the canonical set
+.fi
+.RE
+
+.TP
+.B Launch the interactive terminal browser
+.PP
+.RS
+.nf
+linkmarks tui
+linkmarks tui \-\-source=firefox
+.fi
+.RE
+
+.SH SEE ALSO
+.BR install.sh (1),
+.BR cargo (1),
+.BR man (1),
+.BR groff (1)
+
+Project documentation under
+.BR docs/ARCHITECTURE.md ,
+.BR docs/SPEC.md ,
+.BR docs/ROADMAP.md ,
+and the source tree at
+.UR https://github.com/LOUST-PRO/LinkMarks
+.UE .
+
+The v1 ingest pipeline supports three bridges:
+.BR chrome "(Chromium-family JSON)," " "
+.BR netscape "(HTML interchange)," " "
+and
+.BR firefox
+(\fBplaces.sqlite\fR and \fBjsonlz4\fR). The TUI merges all of them.
