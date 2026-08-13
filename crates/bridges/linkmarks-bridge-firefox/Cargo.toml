@@ -1,0 +1,19 @@
+[package]
+name = "linkmarks-bridge-firefox"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Bridge for Firefox places.sqlite (live profile, read-only) and jsonlz4 bookmark backups (browser-closed snapshots)."
+
+[dependencies]
+linkmarks-core = { path = "../../linkmarks-core" }
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+rusqlite.workspace = true
+tempfile.workspace = true
+lz4_flex = "0.11"

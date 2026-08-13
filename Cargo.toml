@@ -4,6 +4,7 @@ members = [
     "crates/linkmarks-core",
     "crates/linkmarks-cli",
     "crates/bridges/linkmarks-bridge-chromium",
+    "crates/bridges/linkmarks-bridge-firefox",
     "crates/bridges/linkmarks-bridge-netscape",
 ]
 
@@ -34,6 +35,7 @@ walkdir = "2"
 clap = { version = "4.6", features = ["derive", "env"] }
 quick-xml = { version = "0.36", features = ["serialize"] }
 tempfile = "3"
+lz4_flex = { version = "0.11", default-features = false, features = ["std", "safe-decode"] }
 linkmarks-core = { path = "crates/linkmarks-core" }
 
 [profile.release]
