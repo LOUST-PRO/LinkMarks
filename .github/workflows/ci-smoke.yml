@@ -1,0 +1,129 @@
+# LinkMarks CI smoke (Fase 2 F5)
+#
+# Triggers: pushes to feature branches and main; PRs to main.
+# Goals:
+#   1. Format + build + test + clippy on the full workspace.
+#   2. Smoke-test the release binary against XDG paths.
+#   3. Render the manpage with groff (best-effort, not blocking).
+#
+# This workflow is intentionally self-contained and uses no
+# organization-level secrets. Bump rust-toolchain versions here when
+# the workspace's rust-version changes (see Cargo.toml).
+
+name: ci-smoke
+
+on:
+  push:
+    branches:
+      - "feat/**"
+      - "fix/**"
+      - "chore/**"
+      - "main"
+      - "master"
+  pull_request:
+    branches:
+      - "main"
+      - "master"
+
+env:
+  CARGO_TERM_COLOR: "always"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  smoke:
+    name: Build, test, smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + git index
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache cargo target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-target-
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build --workspace --all-targets
+
+      - name: Test
+        run: cargo test --workspace --no-fail-fast
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo audit (best effort)
+        shell: bash
+        run: |
+          if command -v cargo-audit >/dev/null 2>&1; then
+            cargo audit --deny warnings
+          else
+            echo "cargo-audit not installed; skipping (install with 'cargo install cargo-audit --locked')."
+          fi
+
+      - name: Build release binary
+        run: cargo build --release -p linkmarks-cli
+
+      - name: Smoke --version
+        run: ./target/release/linkmarks --version
+
+      - name: Smoke --help
+        run: ./target/release/linkmarks --help
+
+      - name: Smoke init against /tmp paths
+        run: |
+          mkdir -p /tmp/lm-test-store /tmp/lm-test-cfg
+          ./target/release/linkmarks init \
+            --data-dir /tmp/lm-test-store \
+            --config-dir /tmp/lm-test-cfg
+          ls -la /tmp/lm-test-store /tmp/lm-test-cfg
+
+      - name: Smoke list --source=chrome (empty)
+        run: |
+          # Expect a graceful empty list (or an explanatory error if no
+          # Chromium Bookmarks file is present in CI). We only assert
+          # the process exits with a known, documented exit code.
+          set +e
+          ./target/release/linkmarks list --source=chrome
+          rc=$?
+          set -e
+          case "$rc" in
+            0|1|2)
+              echo "linkmarks list exited $rc (acceptable)"
+              ;;
+            *)
+              echo "::error::linkmarks list exited $rc (unexpected)"
+              exit "$rc"
+              ;;
+          esac
+
+  manpage:
+    name: Render manpage with groff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install groff
+        run: sudo apt-get update && sudo apt-get install -y groff
+
+      - name: Render docs/man/linkmarks.1
+        run: groff -man -Tutf8 docs/man/linkmarks.1 > /dev/null
