@@ -1,29 +1,23 @@
 [package]
-name = "linkmarks-cli"
+name = "linkmarks-tui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Command-line interface for LinkMarks."
-
-[[bin]]
-name = "linkmarks"
-path = "src/main.rs"
+description = "Interactive terminal browser for the local LinkMarks store (ratatui + crossterm)."
 
 [dependencies]
-linkmarks-core.workspace = true
-linkmarks-tui = { path = "../linkmarks-tui" }
+linkmarks-core = { path = "../linkmarks-core" }
 linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
-clap.workspace = true
+linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape" }
+ratatui = "0.28"
+crossterm = "0.28"
 anyhow.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-serde_yaml.workspace = true
-thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror.workspace = true
 chrono.workspace = true
+dirs = "5"
 
 [dev-dependencies]
-tempfile = "3"

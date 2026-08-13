@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/linkmarks-core",
     "crates/linkmarks-cli",
+    "crates/linkmarks-tui",
     "crates/bridges/linkmarks-bridge-chromium",
     "crates/bridges/linkmarks-bridge-firefox",
     "crates/bridges/linkmarks-bridge-netscape",
