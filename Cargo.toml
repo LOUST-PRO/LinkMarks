@@ -30,7 +30,7 @@ ulid = "1"
 tracing = "0.1"
 rusqlite = "0.31"
 walkdir = "2"
-clap = { version = "4.6", features = ["derive"] }
+clap = { version = "4.6", features = ["derive", "env"] }
 linkmarks-core = { path = "crates/linkmarks-core" }
 
 [profile.release]

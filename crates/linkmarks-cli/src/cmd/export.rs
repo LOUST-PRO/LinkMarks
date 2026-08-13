@@ -1,44 +1,77 @@
 //! `linkmarks export` — export bookmarks to a sink format.
 //!
-//! v1 supports Netscape HTML only. The implementation here emits a
-//! stub that documents the format boundary; full Netscape HTML
-//! serialization is in scope for the next iteration (currently the
-//! canonical JSON serialization is exposed via `--format=json` for
-//! round-trip testing).
+//! Default source order:
+//! 1. `--source=store` (Fase 2): read from the local SQLite store.
+//! 2. `--source=chrome` (Fase 1 legacy): parse a Chromium JSON file.
+//!
+//! Sink formats: `netscape` (HTML) and `json` (NDJSON, one
+//! `Bookmark` per line). `--output=-` writes to stdout; any other
+//! value is treated as a file path.
 
+use crate::Paths;
 use anyhow::{bail, Result};
 use clap::Args;
+use linkmarks_core::store;
 use linkmarks_core::traits::BookmarkSource;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct ExportArgs {
-    /// Output format. v1 supports `netscape` and `json`.
+    /// Output format. `netscape` emits an HTML interchange file;
+    /// `json` emits NDJSON.
     #[arg(long, default_value = "netscape")]
     pub format: String,
 
-    /// Source to export from.
-    #[arg(long, default_value = "chrome")]
+    /// Source to export from. `store` reads the SQLite store (Fase 2
+    /// default); `chrome` parses a Chromium JSON file.
+    #[arg(long, default_value = "store")]
     pub source: String,
 
-    /// Path to a source file (Chromium JSON).
+    /// Path to a source file (required for `--source=chrome`).
     #[arg(long)]
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
 
     /// Output path. `-` writes to stdout.
-    #[arg(long, short = 'o')]
+    #[arg(long, short = 'o', default_value = "-")]
     pub output: PathBuf,
 }
 
-pub fn run(args: ExportArgs, _format: crate::Format) -> Result<i32> {
-    let kind = linkmarks_core::SourceKind::from_cli_str(&args.source)
-        .ok_or_else(|| anyhow::anyhow!("unknown source '{}'", args.source))?;
-    if !matches!(kind, linkmarks_core::SourceKind::Chromium) {
-        bail!("v1 only supports --source=chrome");
-    }
-
-    let src = linkmarks_bridge_chromium::ChromiumSource::open(&args.path)?;
-    let bookmarks = src.list()?;
+pub fn run(args: ExportArgs, _format: crate::Format, paths: Paths) -> Result<i32> {
+    let bookmarks = match args.source.as_str() {
+        "store" => {
+            if !paths.store.exists() {
+                bail!(
+                    "store not found at {}; run `linkmarks init` first",
+                    paths.store.display()
+                );
+            }
+            let s = store::open(&paths.store)?;
+            let mut all = Vec::new();
+            let mut offset = 0usize;
+            loop {
+                let page = s.list(500, offset)?;
+                if page.is_empty() {
+                    break;
+                }
+                let page_len = page.len();
+                offset += page_len;
+                all.extend(page);
+                if page_len < 500 {
+                    break;
+                }
+            }
+            all
+        }
+        "chrome" => {
+            let path = args
+                .path
+                .clone()
+                .ok_or_else(|| anyhow::anyhow!("--path is required for --source=chrome"))?;
+            let src = linkmarks_bridge_chromium::ChromiumSource::open(&path)?;
+            src.list()?
+        }
+        other => bail!("unsupported --source '{other}' (try `store` or `chrome`)"),
+    };
 
     let rendered = match args.format.as_str() {
         "json" => {
@@ -63,9 +96,6 @@ pub fn run(args: ExportArgs, _format: crate::Format) -> Result<i32> {
 }
 
 fn render_netscape(bookmarks: &[linkmarks_core::Bookmark]) -> String {
-    // Minimal Netscape bookmark file. Real implementation comes when
-    // the Netscape bridge lands (Fase 1 polish); this keeps the
-    // surface stable for downstream tooling.
     let mut out = String::new();
     out.push_str("<!DOCTYPE NETSCAPE-Bookmark-file-1>\n");
     out.push_str("<!-- This is an automatically generated file.\n");

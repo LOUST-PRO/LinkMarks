@@ -27,6 +27,14 @@ fn apply_pragmas(conn: &Connection) -> Result<(), CoreError> {
     Ok(())
 }
 
+/// Read the current `PRAGMA user_version` from a connection. Returns
+/// `0` on a fresh DB. Thin re-export of [`crate::migrator::current_user_version`]
+/// kept here for callers that only depend on the storage layer.
+pub fn current_user_version(conn: &Connection) -> Result<i64, CoreError> {
+    conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
+        .map_err(|e| CoreError::Storage(format!("read user_version: {e}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
