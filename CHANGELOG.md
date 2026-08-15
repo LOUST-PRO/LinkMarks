@@ -4,6 +4,68 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] — 2026-08-15
+
+Patch release — Dependabot `rust-security` group bump + compat fixes.
+
+### Changed (dependency upgrades, no breaking API)
+- `thiserror` 1.0.69 → **2.0.20** (major)
+- `ulid` 1.2.1 → **3.0.0** (major)
+- `rusqlite` 0.31.0 → **0.40.2** (minor)
+- `clap` 4.6.4 → 4.6.6 (patch)
+- `quick-xml` 0.36.2 → **0.41.0** (minor)
+- `lz4_flex` 0.11.6 → 0.14.0 (minor)
+- `dirs` 5.0.1 → **6.0.0** (major)
+- `toml` 0.8.23 → **1.1.4+spec-1.1.0** (major)
+- `ratatui` 0.28.1 → 0.30.2 (minor)
+- `crossterm` 0.28.1 → 0.29.0 (minor)
+
+### Fixed (compat with upgraded deps)
+- **ulid 1.x → 3.x**: `Ulid::new()` removed in 3.x; the
+  now-constructor is `Ulid::generate()` (returns `Self`, not `Result`).
+  Updated single call site in
+  `crates/linkmarks-core/src/model.rs:23` (`BookmarkId::generate`).
+- **quick-xml 0.36 → 0.41**: character references (`&amp;`, `&#160;`,
+  `&aacute;`, …) are now emitted as a separate `Event::GeneralRef`
+  instead of being folded into the surrounding `Event::Text`. Added
+  the missing exhaustive-match arm in
+  `crates/bridges/linkmarks-bridge-netscape/src/parser.rs` that
+  decodes the entity body through the same `resolve_entity` /
+  `decode_numeric_entity` helpers the text path uses.
+  - Behavioural correction fell out of this work: previously both
+    `handle_text` and the new `GeneralRef` arm inserted a single
+    ASCII space as a 'separator' before each non-empty text chunk.
+    With quick-xml 0.36 that was a no-op (single self-contained
+    chunks); with 0.41 a logical text chunk like `AT&amp;T` becomes
+    `Text("AT") + GeneralRef(&) + Text("T")`, and the separator
+    logic produced `"AT & T"` instead of the expected `"AT&T"`.
+    The fix is to drop the separator: the contents of a `<A>` title
+    is one contiguous string.
+  - `attr.unescape_value()` is deprecated in quick-xml 0.41 in
+    favour of `normalized_value()`. The replacement additionally
+    applies XML attribute-value normalization (whitespace
+    collapsing), which would corrupt URLs that legitimately contain
+    multiple spaces; we pin to `unescape_value()` with
+    `#[allow(deprecated)]` and document the rationale inline.
+- **clippy `explicit-auto-deref`** under Rust 1.97: replaced
+  `&**text` with the cleaner `let raw_bytes: &[u8] = text;` (Deref
+  coercion handles the rest).
+
+### Test surface
+- Total tests: **250 / 250 green** (`cargo test --workspace --no-fail-fast`).
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+- `cargo build --workspace --all-targets` clean.
+- `cargo fmt --all -- --check` clean.
+- CI smoke (`fmt + build + test + clippy + release binary + groff
+  manpage`) green on PR #10.
+
+### Anti-features (locked — unchanged from v2.0.0)
+- No telemetry, no phoning home, no automatic update notifier.
+- No server-authoritative mode.
+- No AI-without-cost-gate.
+- No Docker-only deploy.
+- No closed-source build.
+
 ## [2.0.0] — 2026-08-13
 
 Fase 2 batch — interactive TUI + Firefox import + SQLite store.
