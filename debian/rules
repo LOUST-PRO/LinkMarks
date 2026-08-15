@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+# Debhelper rules for linkmarks.
+#
+# Build flow:
+#   1. cargo build --release (linkmarks-cli subcommand)
+#   2. cargo build --release --bin completion-scripts (left as a
+#      downstream policy decision — uncomment if the package builds
+#      bash/zsh/fish completions at build time)
+#   3. install binary to debian/linkmarks/usr/bin/
+#   4. install manpage to debian/linkmarks/usr/share/man/man1/
+
+%:
+	dh $@ --with cargo
+
+override_dh_auto_build:
+	cargo build --release --bin linkmarks
+
+override_dh_auto_install:
+	# Binary
+	install -Dm 0755 target/release/linkmarks \
+	  debian/linkmarks/usr/bin/linkmarks
+	# Manpage (built upstream via `cargo build` runs roff generation;
+	# downstream can swap this for a `pandoc` conversion if preferred)
+	if [ -f docs/man/linkmarks.1 ]; then \
+	  install -Dm 0644 docs/man/linkmarks.1 \
+	    debian/linkmarks/usr/share/man/man1/linkmarks.1; \
+	  gzip -9n debian/linkmarks/usr/share/man/man1/linkmarks.1; \
+	fi
+
+override_dh_auto_test:
+	# Tests are run by CI upstream. Re-running on `dpkg-buildpackage`
+	# duplicates ~5 min of compute and is non-additive. Skip.
+	true

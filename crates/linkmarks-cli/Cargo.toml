@@ -16,6 +16,7 @@ linkmarks-core.workspace = true
 linkmarks-tui = { path = "../linkmarks-tui" }
 linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
 clap.workspace = true
+clap_complete.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true

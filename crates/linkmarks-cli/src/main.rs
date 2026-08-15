@@ -1,15 +1,16 @@
 //! `linkmarks` — the LinkMarks command-line interface.
 //!
 //! Subcommands:
-//! - `init`   — initialize the XDG store + config (Fase 2).
-//! - `list`   — list bookmarks deterministically.
-//! - `import` — import from a bridge source.
-//! - `export` — export to a sink format.
-//! - `dedupe` — local deterministic dedupe by canonical URL.
-//! - `tui`    — launch the interactive terminal browser (Fase 2 F4).
+//! - `init`        — initialize the XDG store + config (Fase 2).
+//! - `list`        — list bookmarks deterministically.
+//! - `import`      — import from a bridge source.
+//! - `export`      — export to a sink format.
+//! - `dedupe`      — local deterministic dedupe by canonical URL.
+//! - `tui`         — launch the interactive terminal browser (Fase 2 F4).
+//! - `completions` — emit a shell completion script (bash/zsh/fish/powershell/elvish).
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
@@ -97,6 +98,18 @@ enum Commands {
     Dedupe(cmd::dedupe::DedupeArgs),
     /// Launch the interactive terminal browser.
     Tui(cmd::tui::TuiArgs),
+    /// Emit a shell completion script to stdout.
+    Completions(cmd::completions::CompletionsArgs),
+}
+
+/// Build the canonical `Cli` command tree.
+///
+/// Public so `completions.rs` (and any future helper) can reach a
+/// mutable `Command` for `clap_complete::generate`. We construct
+/// from `Cli::command()` rather than `Cli::parse()` because parse
+/// also validates against `std::env::args()` (inconvenient in tests).
+pub fn build_cli() -> clap::Command {
+    Cli::command()
 }
 
 fn main() -> Result<()> {
@@ -124,6 +137,7 @@ fn dispatch(cli: Cli, paths: Paths) -> Result<i32> {
         Commands::Export(args) => cmd::export::run(args, cli.format, paths),
         Commands::Dedupe(args) => cmd::dedupe::run(args, cli.format, paths),
         Commands::Tui(args) => cmd::tui::execute(args, paths),
+        Commands::Completions(args) => cmd::completions::run(args, paths),
     }
 }
 

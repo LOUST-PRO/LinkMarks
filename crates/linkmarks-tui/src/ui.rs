@@ -169,12 +169,17 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
         AppState::Loading => "loading...".to_string(),
         AppState::Quit(_) => "bye".to_string(),
         AppState::Filter { query, mode } => {
-            let tag = if matches!(mode, FilterMode::Tag) {
-                " [tag]"
-            } else {
-                ""
+            let label = match mode {
+                FilterMode::Substring => "",
+                FilterMode::Tag => " [tag]",
+                FilterMode::Fuzzy => " [fuzzy]",
             };
-            format!("/{tag}{query} (Esc clear, Enter accept)")
+            if matches!(mode, FilterMode::Fuzzy) {
+                let visible = app.visible().len();
+                format!("/{label}{query} ({visible} matches, Esc clear, Enter accept)")
+            } else {
+                format!("/{label}{query} (Esc clear, Enter accept)")
+            }
         }
         _ => {
             let visible = app.visible().len();

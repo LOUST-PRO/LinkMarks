@@ -13,6 +13,7 @@ linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
 linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape" }
 ratatui = "0.30"
 crossterm = "0.29"
+nucleo = "0.5"
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

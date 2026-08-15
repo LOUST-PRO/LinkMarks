@@ -1,0 +1,30 @@
+Source: linkmarks
+Section: utils
+Priority: optional
+Maintainer: LOUST-PRO Packaging <opensource@loust.pro>
+Uploaders: LOUST-PRO Packaging <opensource@loust.pro>
+Build-Depends:
+ debhelper (>= 12),
+ cargo (>= 1.78),
+ rustc (>= 1.78),
+ dh-cargo,
+ gzip,
+Standards-Version: 4.6.2
+Homepage: https://github.com/LOUST-PRO/LinkMarks
+Vcs-Browser: https://github.com/LOUST-PRO/LinkMarks
+Vcs-Git: https://github.com/LOUST-PRO/LinkMarks.git
+Rules-Requires-Root: no
+
+Package: linkmarks
+Architecture: any
+Depends:
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: Local-first bookmark manager
+ LinkMarks imports bookmarks from Chromium, Firefox, and Netscape HTML,
+ dedupes by canonical URL with a human-readable conflict report, and
+ exposes a ratatui-based TUI. Storage is a local SQLite store (XDG
+ paths) with WAL + busy_timeout for safe concurrent access.
+ .
+ Dual-licensed: AGPL-3.0-or-later (network clause applies) + Commercial
+ for entities that need to skip §13. See LICENSE-COMMERCIAL.md.

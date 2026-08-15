@@ -37,6 +37,9 @@ pub enum FilterMode {
     Substring,
     /// Match only against tags.
     Tag,
+    /// Fuzzy match via `nucleo`; ranked by score DESC. Empty query
+    /// degenerates to "match everything".
+    Fuzzy,
 }
 
 /// Pending action for a confirm dialog. Reserved for v2.
@@ -115,6 +118,11 @@ impl AppState {
                 .tags
                 .iter()
                 .any(|t| t.to_ascii_lowercase().contains(&q)),
+            FilterMode::Fuzzy => {
+                // Delegate to the fuzzy matcher; empty query is a
+                // pass-through by contract.
+                !crate::filter::fuzzy_match(query, std::slice::from_ref(bookmark)).is_empty()
+            }
         }
     }
 }
