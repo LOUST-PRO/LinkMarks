@@ -43,7 +43,8 @@ fn empty_input_produces_valid_doctype() {
 #[test]
 fn single_bookmark_renders_a_tag() {
     let mut sink = NetscapeSink::in_memory();
-    sink.write(&[bk("https://example.com/", "Example")]).unwrap();
+    sink.write(&[bk("https://example.com/", "Example")])
+        .unwrap();
     let body = sink.last_body().unwrap();
     assert!(body.contains("HREF=\"https://example.com/\""));
     assert!(body.contains(">Example</A>"));

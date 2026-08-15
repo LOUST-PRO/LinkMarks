@@ -58,13 +58,17 @@ fn render_loads_state_with_title() {
 
     let backend = TestBackend::new(120, 40);
     let mut terminal = Terminal::new(backend).unwrap();
-    terminal
-        .draw(|f| ui::draw(f, &app))
-        .expect("draw");
+    terminal.draw(|f| ui::draw(f, &app)).expect("draw");
 
     let text = buffer_text(&terminal.backend().buffer().clone());
-    assert!(text.contains("Hello World"), "expected title in buffer:\n{text}");
-    assert!(text.contains("https://example.com/hello"), "expected url in buffer:\n{text}");
+    assert!(
+        text.contains("Hello World"),
+        "expected title in buffer:\n{text}"
+    );
+    assert!(
+        text.contains("https://example.com/hello"),
+        "expected url in buffer:\n{text}"
+    );
 }
 
 #[test]
@@ -113,7 +117,10 @@ fn render_filter_state_shows_query() {
         Some(PathBuf::from("/nonexistent/store.db")),
     );
     let mut app = App::new(registry, AppConfig::default());
-    app.bookmarks = vec![bm("Rust", "https://rust-lang.org"), bm("Other", "https://x")];
+    app.bookmarks = vec![
+        bm("Rust", "https://rust-lang.org"),
+        bm("Other", "https://x"),
+    ];
     app.state = AppState::Filter {
         query: "rust".into(),
         mode: FilterMode::Substring,
@@ -124,7 +131,10 @@ fn render_filter_state_shows_query() {
     terminal.draw(|f| ui::draw(f, &app)).unwrap();
 
     let text = buffer_text(&terminal.backend().buffer().clone());
-    assert!(text.contains("rust"), "expected filter query in buffer:\n{text}");
+    assert!(
+        text.contains("rust"),
+        "expected filter query in buffer:\n{text}"
+    );
 }
 
 #[test]

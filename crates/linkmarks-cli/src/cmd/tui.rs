@@ -44,6 +44,7 @@ pub fn execute(args: TuiArgs, paths: Paths) -> Result<i32> {
 
 fn parse_selection(raw: &Option<String>) -> Result<SourceSelection> {
     let s = raw.clone().unwrap_or_else(|| "all".to_string());
-    SourceSelection::parse(&s)
-        .ok_or_else(|| anyhow::anyhow!("unsupported --source={s} (try: all, chrome, netscape, firefox)"))
+    SourceSelection::parse(&s).ok_or_else(|| {
+        anyhow::anyhow!("unsupported --source={s} (try: all, chrome, netscape, firefox)")
+    })
 }

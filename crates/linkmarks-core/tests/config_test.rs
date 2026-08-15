@@ -32,7 +32,10 @@ fn load_invalid_toml_returns_storage_error_with_path() {
     fs::write(&path, "this is = not valid toml [[[").unwrap();
     let err = load_from(&path).unwrap_err();
     let msg = format!("{err:?}");
-    assert!(msg.contains("Storage"), "expected Storage variant, got: {msg}");
+    assert!(
+        msg.contains("Storage"),
+        "expected Storage variant, got: {msg}"
+    );
     assert!(
         msg.contains("broken.toml"),
         "expected path in error, got: {msg}"

@@ -57,10 +57,7 @@ fn cleanup_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
     let _ = disable_raw_mode();
 }
 
-fn loop_main(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    mut app: App,
-) -> Result<i32> {
+fn loop_main(terminal: &mut Terminal<CrosstermBackend<Stdout>>, mut app: App) -> Result<i32> {
     let max_fps = u64::from(app.config.max_fps.clamp(1, 120));
     let frame_budget = Duration::from_millis((1000 / max_fps).max(1));
 

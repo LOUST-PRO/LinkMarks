@@ -57,7 +57,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use linkmarks_core::canonicalize;
 use linkmarks_core::errors::CoreError;
-use linkmarks_core::model::{Bookmark, BookmarkId, SourceRef, SourceKind};
+use linkmarks_core::model::{Bookmark, BookmarkId, SourceKind, SourceRef};
 use quick_xml::events::attributes::Attribute;
 use quick_xml::events::{BytesStart, BytesText, Event};
 use quick_xml::reader::Reader;
@@ -176,11 +176,7 @@ pub fn parse_and_flatten(path: &Path) -> Result<NetscapeBookmarks, ParseError> {
     parse_file(path)
 }
 
-fn handle_start(
-    start: &BytesStart<'_>,
-    state: &mut ParseState,
-    acc: &mut NetscapeBookmarks,
-) {
+fn handle_start(start: &BytesStart<'_>, state: &mut ParseState, acc: &mut NetscapeBookmarks) {
     let name = lower_owned(start.name().as_ref());
     match name.as_str() {
         // `<DT>` and `<p>` are HTML-style void/marker elements in
@@ -229,20 +225,15 @@ fn handle_start(
     }
 }
 
-fn handle_text(
-    text: &BytesText<'_>,
-    state: &mut ParseState,
-) -> Result<(), ParseError> {
+fn handle_text(text: &BytesText<'_>, state: &mut ParseState) -> Result<(), ParseError> {
     // quick-xml's `unescape()` only knows XML built-ins (&amp; &lt;
     // &gt; &quot; &apos; + numeric refs). It returns `EscapeError` on
     // HTML named entities like `&aacute;`. We bypass it and run our
     // own decoder that handles XML + common HTML5 named entities +
     // numeric refs in one pass.
-    let raw = std::str::from_utf8(text.as_ref()).map_err(|e| {
-        ParseError::Partial {
-            element: String::new(),
-            reason: format!("text not utf-8: {e}"),
-        }
+    let raw = std::str::from_utf8(text.as_ref()).map_err(|e| ParseError::Partial {
+        element: String::new(),
+        reason: format!("text not utf-8: {e}"),
     })?;
     let txt = decode_entities(raw);
     if txt.is_empty() {
@@ -421,11 +412,7 @@ fn handle_end(name_bytes: &[u8], state: &mut ParseState, acc: &mut NetscapeBookm
     }
 }
 
-fn on_open_a(
-    start: &BytesStart<'_>,
-    state: &mut ParseState,
-    acc: &mut NetscapeBookmarks,
-) {
+fn on_open_a(start: &BytesStart<'_>, state: &mut ParseState, acc: &mut NetscapeBookmarks) {
     let mut href: Option<String> = None;
     let mut add_date: Option<i64> = None;
     let mut last_modified: Option<i64> = None;
@@ -762,7 +749,10 @@ mod tests {
 "#;
         let parsed = parse(html.as_bytes()).unwrap();
         assert_eq!(parsed.bookmarks.len(), 1);
-        assert_eq!(parsed.bookmarks[0].collection.as_deref(), Some("Outer/Inner"));
+        assert_eq!(
+            parsed.bookmarks[0].collection.as_deref(),
+            Some("Outer/Inner")
+        );
         assert!(parsed.bookmarks[0]
             .tags
             .iter()
@@ -796,7 +786,10 @@ mod tests {
 </DL><p>
 "#;
         let parsed = parse(html.as_bytes()).unwrap();
-        assert_eq!(parsed.bookmarks[0].description.as_deref(), Some("A description of the link."));
+        assert_eq!(
+            parsed.bookmarks[0].description.as_deref(),
+            Some("A description of the link.")
+        );
     }
 
     #[test]

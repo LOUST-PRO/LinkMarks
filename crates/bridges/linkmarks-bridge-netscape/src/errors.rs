@@ -42,9 +42,7 @@ impl From<BridgeError> for CoreError {
         match err {
             BridgeError::Io(io) => CoreError::Io(io),
             BridgeError::Xml(s) => CoreError::Storage(format!("netscape xml: {s}")),
-            BridgeError::Partial { element, reason } => {
-                CoreError::Partial { element, reason }
-            }
+            BridgeError::Partial { element, reason } => CoreError::Partial { element, reason },
             BridgeError::Invariant(s) => CoreError::Storage(format!("netscape invariant: {s}")),
         }
     }

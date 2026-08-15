@@ -51,9 +51,18 @@ fn case_insensitive_title_match() {
         bm("Hello World", "https://x", &[], None),
         bm("Goodbye", "https://y", &[], None),
     ];
-    assert_eq!(filter(&list, "hello", FilterMode::Substring), vec!["Hello World"]);
-    assert_eq!(filter(&list, "WORLD", FilterMode::Substring), vec!["Hello World"]);
-    assert_eq!(filter(&list, "xyz", FilterMode::Substring), Vec::<String>::new());
+    assert_eq!(
+        filter(&list, "hello", FilterMode::Substring),
+        vec!["Hello World"]
+    );
+    assert_eq!(
+        filter(&list, "WORLD", FilterMode::Substring),
+        vec!["Hello World"]
+    );
+    assert_eq!(
+        filter(&list, "xyz", FilterMode::Substring),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
@@ -96,7 +105,10 @@ fn tag_mode_only_tags() {
         bm("rusty", "https://y", &[], None),
     ];
     assert_eq!(filter(&list, "rust", FilterMode::Tag), vec!["Hello world"]);
-    assert_eq!(filter(&list, "rusty", FilterMode::Tag), Vec::<String>::new());
+    assert_eq!(
+        filter(&list, "rusty", FilterMode::Tag),
+        Vec::<String>::new()
+    );
 }
 
 #[test]

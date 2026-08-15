@@ -162,12 +162,14 @@ mod tests {
         let p = Paths::resolve(&cli);
         // The store path lives under the data dir.
         assert!(
-            p.store.starts_with(linkmarks_core::paths::linkmarks_data_dir()),
+            p.store
+                .starts_with(linkmarks_core::paths::linkmarks_data_dir()),
             "store path {:?} not under data dir",
             p.store
         );
         assert!(
-            p.config.starts_with(linkmarks_core::paths::linkmarks_config_dir()),
+            p.config
+                .starts_with(linkmarks_core::paths::linkmarks_config_dir()),
             "config path {:?} not under config dir",
             p.config
         );

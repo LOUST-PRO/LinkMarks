@@ -9,10 +9,19 @@ fn key(code: KeyCode) -> KeyEvent {
 
 #[test]
 fn jk_gl_motion_works_outside_filter() {
-    assert_eq!(KeyMap::map(key(KeyCode::Char('j')), false), AppAction::MoveDown);
-    assert_eq!(KeyMap::map(key(KeyCode::Char('k')), false), AppAction::MoveUp);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('j')), false),
+        AppAction::MoveDown
+    );
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('k')), false),
+        AppAction::MoveUp
+    );
     assert_eq!(KeyMap::map(key(KeyCode::Char('g')), false), AppAction::Top);
-    assert_eq!(KeyMap::map(key(KeyCode::Char('G')), false), AppAction::Bottom);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('G')), false),
+        AppAction::Bottom
+    );
 }
 
 #[test]
@@ -20,7 +29,10 @@ fn arrow_keys_motion_outside_filter() {
     assert_eq!(KeyMap::map(key(KeyCode::Down), false), AppAction::MoveDown);
     assert_eq!(KeyMap::map(key(KeyCode::Up), false), AppAction::MoveUp);
     assert_eq!(KeyMap::map(key(KeyCode::PageUp), false), AppAction::PageUp);
-    assert_eq!(KeyMap::map(key(KeyCode::PageDown), false), AppAction::PageDown);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::PageDown), false),
+        AppAction::PageDown
+    );
 }
 
 #[test]
@@ -33,17 +45,26 @@ fn enter_emits_open_url() {
 
 #[test]
 fn slash_enters_filter() {
-    assert_eq!(KeyMap::map(key(KeyCode::Char('/')), false), AppAction::ShowFilter);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('/')), false),
+        AppAction::ShowFilter
+    );
 }
 
 #[test]
 fn question_mark_shows_help() {
-    assert_eq!(KeyMap::map(key(KeyCode::Char('?')), false), AppAction::ShowHelp);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('?')), false),
+        AppAction::ShowHelp
+    );
 }
 
 #[test]
 fn q_quits_outside_filter() {
-    assert_eq!(KeyMap::map(key(KeyCode::Char('q')), false), AppAction::Quit(0));
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('q')), false),
+        AppAction::Quit(0)
+    );
 }
 
 #[test]
@@ -77,5 +98,8 @@ fn backspace_in_filter_pops() {
 
 #[test]
 fn refresh_bound_to_r() {
-    assert_eq!(KeyMap::map(key(KeyCode::Char('r')), false), AppAction::Refresh);
+    assert_eq!(
+        KeyMap::map(key(KeyCode::Char('r')), false),
+        AppAction::Refresh
+    );
 }

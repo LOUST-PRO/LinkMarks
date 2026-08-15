@@ -111,8 +111,14 @@ mod tests {
 
     #[test]
     fn quit_on_q() {
-        assert_eq!(KeyMap::map(key(KeyCode::Char('q')), false), AppAction::Quit(0));
-        assert_eq!(KeyMap::map(key(KeyCode::Char('Q')), false), AppAction::Quit(0));
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('q')), false),
+            AppAction::Quit(0)
+        );
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('Q')), false),
+            AppAction::Quit(0)
+        );
     }
 
     #[test]
@@ -123,18 +129,30 @@ mod tests {
 
     #[test]
     fn cursor_motion_vim_and_arrows() {
-        assert_eq!(KeyMap::map(key(KeyCode::Char('j')), false), AppAction::MoveDown);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('j')), false),
+            AppAction::MoveDown
+        );
         assert_eq!(KeyMap::map(key(KeyCode::Down), false), AppAction::MoveDown);
-        assert_eq!(KeyMap::map(key(KeyCode::Char('k')), false), AppAction::MoveUp);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('k')), false),
+            AppAction::MoveUp
+        );
         assert_eq!(KeyMap::map(key(KeyCode::Up), false), AppAction::MoveUp);
         assert_eq!(KeyMap::map(key(KeyCode::Char('g')), false), AppAction::Top);
-        assert_eq!(KeyMap::map(key(KeyCode::Char('G')), false), AppAction::Bottom);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('G')), false),
+            AppAction::Bottom
+        );
     }
 
     #[test]
     fn page_motion() {
         assert_eq!(KeyMap::map(key(KeyCode::PageUp), false), AppAction::PageUp);
-        assert_eq!(KeyMap::map(key(KeyCode::PageDown), false), AppAction::PageDown);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::PageDown), false),
+            AppAction::PageDown
+        );
     }
 
     #[test]
@@ -147,14 +165,23 @@ mod tests {
 
     #[test]
     fn filter_and_help() {
-        assert_eq!(KeyMap::map(key(KeyCode::Char('/')), false), AppAction::ShowFilter);
-        assert_eq!(KeyMap::map(key(KeyCode::Char('?')), false), AppAction::ShowHelp);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('/')), false),
+            AppAction::ShowFilter
+        );
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('?')), false),
+            AppAction::ShowHelp
+        );
         assert_eq!(KeyMap::map(key(KeyCode::F(1)), false), AppAction::ShowHelp);
     }
 
     #[test]
     fn refresh_on_r_or_f5() {
-        assert_eq!(KeyMap::map(key(KeyCode::Char('r')), false), AppAction::Refresh);
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('r')), false),
+            AppAction::Refresh
+        );
         assert_eq!(KeyMap::map(key(KeyCode::F(5)), false), AppAction::Refresh);
     }
 
@@ -193,10 +220,7 @@ mod tests {
 
     #[test]
     fn filter_mode_arrows_are_no_ops() {
-        assert_eq!(
-            KeyMap::map(key(KeyCode::Down), true),
-            AppAction::Continue
-        );
+        assert_eq!(KeyMap::map(key(KeyCode::Down), true), AppAction::Continue);
         assert_eq!(KeyMap::map(key(KeyCode::Up), true), AppAction::Continue);
     }
 

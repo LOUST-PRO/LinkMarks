@@ -78,12 +78,22 @@ fn upsert_new_canonical_inserts_and_sets_tags() {
 #[test]
 fn upsert_existing_canonical_updates_and_replaces_tags() {
     let mut s = open_in_memory().unwrap();
-    let mut b1 = mk("https://example.com/x", "Old Title", SourceKind::Chromium, 100);
+    let mut b1 = mk(
+        "https://example.com/x",
+        "Old Title",
+        SourceKind::Chromium,
+        100,
+    );
     b1.tags = vec!["old".into()];
     let id = s.upsert(&b1).unwrap();
 
     // Second upsert: same canonical URL, different title + tags.
-    let mut b2 = mk("https://example.com/x", "New Title", SourceKind::Chromium, 200);
+    let mut b2 = mk(
+        "https://example.com/x",
+        "New Title",
+        SourceKind::Chromium,
+        200,
+    );
     b2.tags = vec!["new".into()];
     let id2 = s.upsert(&b2).unwrap();
 
@@ -234,11 +244,7 @@ fn migrator_runs_each_migration_once_and_user_version_matches() {
     // schema_migrations has exactly one row.
     let rows: i64 = s
         .connection()
-        .query_row(
-            "SELECT COUNT(*) FROM schema_migrations",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
     assert_eq!(rows, 1);
 
@@ -252,11 +258,7 @@ fn migrator_runs_each_migration_once_and_user_version_matches() {
     assert_eq!(version2, 1);
     let rows2: i64 = s
         .connection()
-        .query_row(
-            "SELECT COUNT(*) FROM schema_migrations",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
         .unwrap();
     assert_eq!(rows2, 1);
 }
@@ -409,10 +411,7 @@ fn ulid_generation_is_monotonic() {
     let sample = BookmarkId::generate().0;
     assert_eq!(sample.len(), 26);
     for c in sample.chars() {
-        assert!(
-            c.is_ascii_alphanumeric(),
-            "non-base32 char in ULID: {c}"
-        );
+        assert!(c.is_ascii_alphanumeric(), "non-base32 char in ULID: {c}");
     }
 }
 

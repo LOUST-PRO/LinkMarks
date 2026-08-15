@@ -41,7 +41,9 @@ fn parses_minimal_folder_paths() {
     let news: Vec<&str> = parsed
         .bookmarks
         .iter()
-        .filter(|b| b.original_url.contains("example.com") || b.original_url.contains("example.org"))
+        .filter(|b| {
+            b.original_url.contains("example.com") || b.original_url.contains("example.org")
+        })
         .map(|b| b.collection.as_deref().unwrap_or(""))
         .collect();
     assert!(news.iter().all(|c| *c == "News"));
@@ -57,7 +59,10 @@ fn parses_nested_three_levels() {
         .iter()
         .find(|b| b.original_url == "https://g.example.com/")
         .unwrap();
-    assert_eq!(g.collection.as_deref(), Some("Root/Level1D/Level2C/Level3A"));
+    assert_eq!(
+        g.collection.as_deref(),
+        Some("Root/Level1D/Level2C/Level3A")
+    );
     // 4 synthetic folder tags + nothing else.
     assert_eq!(g.tags.len(), 4);
     assert!(g.tags.contains(&"#folder/root".to_string()));

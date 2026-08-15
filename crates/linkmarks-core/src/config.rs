@@ -62,10 +62,8 @@ pub fn load_from(path: &Path) -> Result<CanonicalConfig, CoreError> {
     if !path.exists() {
         return Ok(CanonicalConfig::default_rules());
     }
-    let text = std::fs::read_to_string(path).map_err(|e| CoreError::Storage(format!(
-        "read config {}: {e}",
-        path.display()
-    )))?;
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| CoreError::Storage(format!("read config {}: {e}", path.display())))?;
     parse(&text, path)
 }
 
@@ -73,10 +71,8 @@ fn parse(text: &str, origin: &Path) -> Result<CanonicalConfig, CoreError> {
     if text.trim().is_empty() {
         return Ok(CanonicalConfig::default_rules());
     }
-    let on_disk: OnDiskConfig = toml::from_str(text).map_err(|e| CoreError::Storage(format!(
-        "parse config {}: {e}",
-        origin.display()
-    )))?;
+    let on_disk: OnDiskConfig = toml::from_str(text)
+        .map_err(|e| CoreError::Storage(format!("parse config {}: {e}", origin.display())))?;
 
     let mut cfg = CanonicalConfig::default_rules();
     for (host, dom) in on_disk.canonical.domains {

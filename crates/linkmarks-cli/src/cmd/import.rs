@@ -151,9 +151,9 @@ fn canonicalize_bookmarks(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{TimeZone, Utc};
     use linkmarks_core::canonical_config::CanonicalConfig;
     use linkmarks_core::model::{Bookmark, BookmarkId, SourceKind, SourceRef};
-    use chrono::{TimeZone, Utc};
 
     fn mk_bm(url: &str) -> Bookmark {
         Bookmark {
@@ -183,7 +183,9 @@ mod tests {
         let bms = vec![mk_bm("HTTPS://Example.com/p?utm_source=x&id=42")];
         let report = canonicalize_bookmarks(&bms, &cfg);
         assert_eq!(report.canonical.len(), 1);
-        assert!(report.canonical[0].canonical_url.starts_with("https://example.com/"));
+        assert!(report.canonical[0]
+            .canonical_url
+            .starts_with("https://example.com/"));
         assert!(report.canonical[0].canonical_url.contains("id=42"));
         assert!(!report.canonical[0].canonical_url.contains("utm_source"));
     }

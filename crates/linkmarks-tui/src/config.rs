@@ -141,7 +141,10 @@ mod tests {
     #[test]
     fn parse_rejects_unknown() {
         assert_eq!(SourceSelection::parse("bogus"), None);
-        assert_eq!(SourceSelection::parse("chrome   "), Some(SourceSelection::Chrome));
+        assert_eq!(
+            SourceSelection::parse("chrome   "),
+            Some(SourceSelection::Chrome)
+        );
     }
 
     #[test]

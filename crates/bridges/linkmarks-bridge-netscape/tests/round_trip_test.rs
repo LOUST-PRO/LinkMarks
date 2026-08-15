@@ -17,7 +17,9 @@ fn fixture(name: &str) -> std::path::PathBuf {
     p
 }
 
-fn canonical_id_set(parsed: &linkmarks_bridge_netscape::NetscapeBookmarks) -> Vec<(String, String)> {
+fn canonical_id_set(
+    parsed: &linkmarks_bridge_netscape::NetscapeBookmarks,
+) -> Vec<(String, String)> {
     let mut v: Vec<(String, String)> = parsed
         .bookmarks
         .iter()
@@ -170,7 +172,11 @@ fn round_trip_with_full_input_string() {
         .iter()
         .map(|b| b.canonical_url.clone())
         .collect();
-    let mut re_: Vec<_> = re.bookmarks.iter().map(|b| b.canonical_url.clone()).collect();
+    let mut re_: Vec<_> = re
+        .bookmarks
+        .iter()
+        .map(|b| b.canonical_url.clone())
+        .collect();
     orig.sort();
     re_.sort();
     assert_eq!(orig, re_);

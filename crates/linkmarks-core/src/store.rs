@@ -210,11 +210,8 @@ impl Store {
             .map_err(|e| CoreError::Storage(format!("delete tags: {e}")))?;
         for raw in tags {
             if let Some(tag) = Tag::new(raw) {
-                tx.execute(
-                    SQL_INSERT_TAG,
-                    params![id.0, tag.0],
-                )
-                .map_err(|e| CoreError::Storage(format!("insert tag: {e}")))?;
+                tx.execute(SQL_INSERT_TAG, params![id.0, tag.0])
+                    .map_err(|e| CoreError::Storage(format!("insert tag: {e}")))?;
             }
         }
         tx.commit()
@@ -240,12 +237,7 @@ impl Store {
 
     // ---- internal helpers ----
 
-    fn insert_new(
-        &self,
-        id: &BookmarkId,
-        b: &Bookmark,
-        now: i64,
-    ) -> Result<(), CoreError> {
+    fn insert_new(&self, id: &BookmarkId, b: &Bookmark, now: i64) -> Result<(), CoreError> {
         let added_at = if b.created_at.timestamp() > 0 {
             b.created_at.timestamp()
         } else {
@@ -284,12 +276,7 @@ impl Store {
         Ok(())
     }
 
-    fn update_existing(
-        &self,
-        id: &BookmarkId,
-        b: &Bookmark,
-        _now: i64,
-    ) -> Result<(), CoreError> {
+    fn update_existing(&self, id: &BookmarkId, b: &Bookmark, _now: i64) -> Result<(), CoreError> {
         // Preserve the caller-supplied `updated_at` so import-time
         // provenance (e.g. Chrome's last-visit timestamp) round-trips.
         // Fall back to "now" only when the caller left it at epoch 0.
@@ -334,14 +321,11 @@ const SQL_LIST_ACTIVE: &str = "\
 const SQL_COUNT_ACTIVE: &str = "SELECT COUNT(*) FROM bookmarks WHERE archived = 0";
 const SQL_COUNT_ALL: &str = "SELECT COUNT(*) FROM bookmarks";
 
-const SQL_SELECT_TAGS_FOR: &str =
-    "SELECT tag FROM tags WHERE bookmark_id = ?1 ORDER BY tag ASC";
+const SQL_SELECT_TAGS_FOR: &str = "SELECT tag FROM tags WHERE bookmark_id = ?1 ORDER BY tag ASC";
 const SQL_DELETE_TAGS_FOR: &str = "DELETE FROM tags WHERE bookmark_id = ?1";
-const SQL_INSERT_TAG: &str =
-    "INSERT OR IGNORE INTO tags (bookmark_id, tag) VALUES (?1, ?2)";
+const SQL_INSERT_TAG: &str = "INSERT OR IGNORE INTO tags (bookmark_id, tag) VALUES (?1, ?2)";
 
-const SQL_ARCHIVE_BY_ID: &str =
-    "UPDATE bookmarks SET archived = 1 WHERE id = ?1 AND archived = 0";
+const SQL_ARCHIVE_BY_ID: &str = "UPDATE bookmarks SET archived = 1 WHERE id = ?1 AND archived = 0";
 
 const SQL_INSERT_BOOKMARK: &str = "\
     INSERT INTO bookmarks \

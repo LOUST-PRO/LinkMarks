@@ -40,14 +40,18 @@ pub fn run(args: InitArgs, _format: crate::Format, paths: crate::Paths) -> Resul
     let store_path = paths.store.clone();
     let cfg_path = paths.config.clone();
 
-    let data_dir = args
-        .data_dir
-        .clone()
-        .unwrap_or_else(|| store_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(paths::linkmarks_data_dir));
-    let config_dir = args
-        .config_dir
-        .clone()
-        .unwrap_or_else(|| cfg_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(paths::linkmarks_config_dir));
+    let data_dir = args.data_dir.clone().unwrap_or_else(|| {
+        store_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(paths::linkmarks_data_dir)
+    });
+    let config_dir = args.config_dir.clone().unwrap_or_else(|| {
+        cfg_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(paths::linkmarks_config_dir)
+    });
 
     // 1+2. Create directories.
     std::fs::create_dir_all(&data_dir)
@@ -70,12 +74,8 @@ pub fn run(args: InitArgs, _format: crate::Format, paths: crate::Paths) -> Resul
     };
 
     // 4. Open the store (runs the migrator).
-    let _store = store::open(&store_path).map_err(|e| {
-        anyhow::anyhow!(
-            "open store {}: {e}",
-            store_path.display()
-        )
-    })?;
+    let _store = store::open(&store_path)
+        .map_err(|e| anyhow::anyhow!("open store {}: {e}", store_path.display()))?;
     let _cfg = core_config::load_from(&cfg_path)
         .map_err(|e| anyhow::anyhow!("parse config {}: {e}", cfg_path.display()))?;
 

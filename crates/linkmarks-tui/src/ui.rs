@@ -113,10 +113,7 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
             ]));
         }
         if !b.tags.is_empty() {
-            let mut spans = vec![Span::styled(
-                "Tags:   ",
-                Style::default().fg(Color::Cyan),
-            )];
+            let mut spans = vec![Span::styled("Tags:   ", Style::default().fg(Color::Cyan))];
             for (i, t) in b.tags.iter().enumerate() {
                 if i > 0 {
                     spans.push(Span::raw(" "));
@@ -285,7 +282,10 @@ pub fn relative(at: chrono::DateTime<chrono::Utc>) -> String {
 
 /// Render a single bookmark as a small block — handy for tests.
 pub fn render_bookmark_to_lines(b: &Bookmark) -> Vec<Line<'static>> {
-    vec![Line::from(b.title.clone()), Line::from(b.original_url.clone())]
+    vec![
+        Line::from(b.title.clone()),
+        Line::from(b.original_url.clone()),
+    ]
 }
 
 #[cfg(test)]
@@ -363,6 +363,9 @@ mod tests {
         let lines = render_bookmark_to_lines(&b);
         assert_eq!(lines.len(), 2);
         let line0 = format!("{:?}", lines[0]);
-        assert!(line0.contains("Hello"), "expected title in line debug: {line0}");
+        assert!(
+            line0.contains("Hello"),
+            "expected title in line debug: {line0}"
+        );
     }
 }

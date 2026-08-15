@@ -135,7 +135,10 @@ impl NetscapeSink {
     /// Write a slice of bookmarks atomically to a path. Returns
     /// the report plus the rendered body (for callers that want to
     /// inspect the output without re-reading the file).
-    pub fn write_to(path: &Path, bookmarks: &[Bookmark]) -> Result<(WriteReport, String), CoreError> {
+    pub fn write_to(
+        path: &Path,
+        bookmarks: &[Bookmark],
+    ) -> Result<(WriteReport, String), CoreError> {
         let body = Self::build_html(bookmarks);
         write_atomic(path, &body)?;
 
@@ -206,9 +209,8 @@ fn write_atomic(path: &Path, body: &str) -> Result<(), CoreError> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     let _ = fs::create_dir_all(parent);
 
-    let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| {
-        CoreError::Storage(format!("netscape sink temp-file: {e}"))
-    })?;
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|e| CoreError::Storage(format!("netscape sink temp-file: {e}")))?;
     tmp.write_all(body.as_bytes()).map_err(CoreError::Io)?;
     tmp.flush().map_err(CoreError::Io)?;
     tmp.as_file().sync_all().map_err(CoreError::Io)?;
