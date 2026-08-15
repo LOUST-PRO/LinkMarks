@@ -20,7 +20,7 @@ impl BookmarkId {
     /// Generate a fresh ULID-backed identifier.
     #[must_use]
     pub fn generate() -> Self {
-        Self(ulid::Ulid::new().to_string())
+        Self(ulid::Ulid::generate().to_string())
     }
 }
 
