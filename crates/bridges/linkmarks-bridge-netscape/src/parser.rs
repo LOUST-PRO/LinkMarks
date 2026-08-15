@@ -144,6 +144,38 @@ pub fn parse(bytes: &[u8]) -> Result<NetscapeBookmarks, ParseError> {
             | Event::PI(_) => {
                 // Ignore.
             }
+            Event::GeneralRef(ref_) => {
+                // quick-xml 0.41+ emits character references as a
+                // separate event instead of folding them into the
+                // surrounding Text. The content here is the bytes
+                // between `&` and `;`, e.g. `amp` for `&amp;`,
+                // `#160` for `&#160;`. We feed those bytes through
+                // the same decoder the text path uses.
+                let entity_cow = ref_.into_inner();
+                let entity_bytes: &[u8] = match &entity_cow {
+                    std::borrow::Cow::Borrowed(b) => b,
+                    std::borrow::Cow::Owned(b) => b.as_slice(),
+                };
+                let entity = std::str::from_utf8(entity_bytes).unwrap_or("");
+                let resolved = resolve_entity(entity).unwrap_or_else(|| {
+                    if let Some(rest) = entity.strip_prefix('#') {
+                        decode_numeric_entity(rest).unwrap_or_default()
+                    } else {
+                        String::new()
+                    }
+                });
+                if !resolved.is_empty() {
+                    if state.collecting_description {
+                        state.description_buf.push_str(&resolved);
+                    } else {
+                        // Concatenate without separator — see the
+                        // rationale in `handle_text`. The
+                        // surrounding Text events already include
+                        // their own spacing where applicable.
+                        state.title_buf.push_str(&resolved);
+                    }
+                }
+            }
             Event::Start(start) => {
                 handle_start(&start, &mut state, &mut acc);
             }
@@ -231,7 +263,17 @@ fn handle_text(text: &BytesText<'_>, state: &mut ParseState) -> Result<(), Parse
     // HTML named entities like `&aacute;`. We bypass it and run our
     // own decoder that handles XML + common HTML5 named entities +
     // numeric refs in one pass.
-    let raw = std::str::from_utf8(text.as_ref()).map_err(|e| ParseError::Partial {
+    //
+    // We do NOT insert a space separator between consecutive text
+    // chunks (Text + GeneralRef + Text for the same anchor). The
+    // content of a `<A>` title is a contiguous run; concatenating
+    // without padding preserves fidelity (e.g. `AT&amp;T` → `AT&T`).
+    // Earlier versions of this code added a `' '` separator which
+    // was wrong: with quick-xml 0.41 the GeneralRef event splits a
+    // single Text event that *had* no separator, and our decoder
+    // emits the resolved character in-place.
+    let raw_bytes: &[u8] = text;
+    let raw = std::str::from_utf8(raw_bytes).map_err(|e| ParseError::Partial {
         element: String::new(),
         reason: format!("text not utf-8: {e}"),
     })?;
@@ -242,9 +284,6 @@ fn handle_text(text: &BytesText<'_>, state: &mut ParseState) -> Result<(), Parse
     if state.collecting_description {
         state.description_buf.push_str(&txt);
     } else {
-        if !state.title_buf.is_empty() {
-            state.title_buf.push(' ');
-        }
         state.title_buf.push_str(&txt);
     }
     Ok(())
@@ -374,6 +413,21 @@ fn resolve_entity(entity: &str) -> Option<String> {
         }
     };
     Some(resolved)
+}
+
+/// Decode a numeric character reference body — i.e. the digits after
+/// `&#`, like `160` (decimal) or `xA0` (hex). Returns the single char.
+fn decode_numeric_entity(body: &str) -> Option<String> {
+    let body = body.trim();
+    if let Some(hex) = body.strip_prefix('x').or_else(|| body.strip_prefix('X')) {
+        if let Ok(n) = u32::from_str_radix(hex, 16) {
+            return char::from_u32(n).map(|c| c.to_string());
+        }
+    }
+    if let Ok(n) = body.parse::<u32>() {
+        return char::from_u32(n).map(|c| c.to_string());
+    }
+    None
 }
 
 fn handle_end(name_bytes: &[u8], state: &mut ParseState, acc: &mut NetscapeBookmarks) {
@@ -566,7 +620,21 @@ fn on_close_h3(state: &mut ParseState) {
 fn decode_attr(attr: &Attribute<'_>) -> Result<String, ParseError> {
     // `unescape_value()` is available when the `encoding` feature
     // of quick-xml is OFF (our case — we only enable `serialize`).
-    // It decodes UTF-8 then unescapes HTML entities.
+    // It decodes UTF-8 then unescapes HTML entities. This is the
+    // exact semantic we want: a raw byte-to-string conversion that
+    // resolves XML predefined entities. We deliberately do NOT use
+    // `normalized_value()` because that additionally applies XML
+    // attribute-value normalization (whitespace collapsing), which
+    // would corrupt URLs that legitimately contain multiple spaces
+    // or other whitespace.
+    //
+    // Marked deprecated in quick-xml 0.41 in favour of
+    // `normalized_value()`, but `decode_and_unescape_value` would
+    // require us to manage a `Decoder`, and the warning fires only
+    // when the `encoding` feature is OFF (our case). Pin to
+    // `unescape_value` for behavioural parity with the v0.36 path;
+    // revisit if we ever enable `encoding`.
+    #[allow(deprecated)]
     let v = attr.unescape_value()?;
     Ok(v.into_owned())
 }
