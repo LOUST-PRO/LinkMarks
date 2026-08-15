@@ -25,18 +25,18 @@ description = "Local-first, AGPL-licensed bookmark manager. Imports what you hav
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 url = "2"
 chrono = { version = "0.4", features = ["serde"] }
-ulid = "1"
+ulid = "3"
 tracing = "0.1"
-rusqlite = "0.31"
+rusqlite = "0.40"
 walkdir = "2"
 clap = { version = "4.6", features = ["derive", "env"] }
-quick-xml = { version = "0.36", features = ["serialize"] }
+quick-xml = { version = "0.41", features = ["serialize"] }
 tempfile = "3"
-lz4_flex = { version = "0.11", default-features = false, features = ["std", "safe-decode"] }
+lz4_flex = { version = "0.14", default-features = false, features = ["std", "safe-decode"] }
 linkmarks-core = { path = "crates/linkmarks-core" }
 
 [profile.release]

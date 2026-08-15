@@ -11,13 +11,13 @@ description = "Interactive terminal browser for the local LinkMarks store (ratat
 linkmarks-core = { path = "../linkmarks-core" }
 linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
 linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape" }
-ratatui = "0.28"
-crossterm = "0.28"
+ratatui = "0.30"
+crossterm = "0.29"
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror.workspace = true
 chrono.workspace = true
-dirs = "5"
+dirs = "6"
 
 [dev-dependencies]
