@@ -4,6 +4,97 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-08-13
+
+Fase 2 batch — interactive TUI + Firefox import + SQLite store.
+
+### Added
+- **`linkmarks-core`**: SQLite store (`rusqlite`, WAL mode, busy_timeout
+  5s, foreign_keys=ON, soft-archive via `archived_at`), XDG path
+  resolution (`dirs`), TOML config loader, schema migrations runner
+  (4 statements: store init, indices, view v_bookmarks_full, pragmas).
+- **`linkmarks-tui`** (new crate, ~2159 LOC): ratatui + crossterm-based
+  interactive terminal browser. Browse collections, filter by substring
+  / tag, view metadata, open URLs. 71 tests across 4 integration suites.
+- **`linkmarks-bridge-firefox`** (new crate, ~873 LOC): read-only
+  `places.sqlite` reader (moz_bookmarks / moz_places / moz_tags), raw
+  LZ4 block decompressor for `bookmarks-backups/*.jsonlz4` (mozLz40\0
+  prefix + `lz4_flex` block). 5 modules, 5 in-crate tests.
+- **`linkmarks-bridge-netscape`** (~2181 LOC, already shipped): full
+  Netscape bookmark HTML parser + sink with custom HTML5 named-entity
+  decoder (~40 entities) + numeric character reference handling.
+  Atomic write via tempfile + persist. 26 in-crate tests +
+  integration tests.
+- **`scripts/install.sh`**: bash, `set -euo pipefail`. Auto-detects
+  host. Options: `--prefix`, `--binary-from`, `--force`, `--dry-run`,
+  `--help`. Validates installed binary with `--version` + `--help`.
+- **`docs/man/linkmarks.1`**: 358-line roff `-man` page covering NAME,
+  SYNOPSIS, DESCRIPTION, SUBCOMMANDS, EXIT STATUS, ENVIRONMENT, FILES,
+  EXAMPLES, SEE ALSO. Renders cleanly with `groff -man`.
+- **`.github/workflows/ci-smoke.yml`**: 2 jobs (`smoke` + `manpage`)
+  on `ubuntu-latest` running fmt + build + test + clippy + release
+  binary smoke + groff render. Triggers on `feat/**`, `fix/**`,
+  `chore/**`, `main`, `master`, and PRs to main/master.
+- **`tests/install_test.sh`**, **`tests/manpage_test.sh`**: bash smoke
+  scripts for the install path and manpage rendering.
+
+### Changed
+- **Workspace version bump 1.0.1 → 2.0.0** — major bump because
+  Fase 2 introduces a new persistence surface (SQLite store, was
+  in-memory only at v1.0.x) and the new `tui` subcommand changes
+  the CLI surface.
+- `linkmarks-cli` gains a `tui` subcommand (`crates/linkmarks-cli/src/cmd/tui.rs`).
+- All crates continue to inherit `version.workspace = true`, so a single
+  bump propagates across 6 crates.
+- Workspace member list now includes `crates/linkmarks-tui`,
+  `crates/bridges/linkmarks-bridge-firefox`.
+
+### Test surface
+- Total tests: **250 / 250 green** (`cargo test --workspace --no-fail-fast`).
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+- `cargo build --workspace --all-targets` clean.
+
+### Anti-features (locked — unchanged from v1.0.0)
+- No telemetry, no phoning home, no automatic update notifier.
+- No server-authoritative mode.
+- No AI-without-cost-gate.
+- No Docker-only deploy.
+- No closed-source build.
+
+### Deferred (F2.5 follow-up)
+- **Fuzzy filter via `nucleo`** — implementation present in working tree
+  (`crates/linkmarks-tui/src/filter.rs`, sort.rs, filter_fuzzy_test.rs) on
+  branch `chore/snapshot-2026-08-15-fuzz-foreign-wt` (0f5b6cc). Tracked
+  for the F2.5 PR alongside sort modes.
+- **Sort modes** — sort.rs preserved on the snapshot branch.
+- **Shell completions** — `clap_complete` + build script. Out of scope
+  per F5 PR body.
+- **README Install / Subcommands / CI sections refresh** — original v1
+  install instructions remain. Tracked for a separate docs pass.
+- **Debian / RPM / Arch / Homebrew packaging** — out of scope, follows
+  in a future maintenance release once install.sh stabilizes.
+- **`cargo fmt --check` 56 hunks of pre-existing drift** — non-F5 drift,
+  to be batched with F2.5.
+
+### Planned (see ROADMAP.md)
+- Fase 3: CRDT sync server (spike `yrs` vs `automerge-rs` first), opt-in
+  `linkmarks sync --server <url>`.
+- Fase 4: `linkmarks-gui` (Dioxus desktop).
+- Fase 5: Plugin market with stable ABI + signed binaries.
+
+## [1.0.1] — 2026-08-03
+
+### Changed
+- **Tracking-param blocklist expanded** — added `mc_eid`, `mc_cid`,
+  `igshid`, `ref_src` to the canonical-URL stripping set (was 5 → 9
+  params). Documented in `docs/decisions/0004-tracking-params.md`.
+- **SQLite WAL storage** — `linkmarks-core` storage layer now uses
+  WAL journal mode + `busy_timeout=5000` for concurrent reader/writer
+  safety. Migration is idempotent (`PRAGMA journal_mode=WAL` re-issued
+  on every connection).
+- **3 ADRs added** — `0002-dioxus-for-gui.md`,
+  `0003-sqlite-as-store.md`, `0004-tracking-params.md`.
+
 ## [1.0.0] — 2026-07-28
 
 ### Added
