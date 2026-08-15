@@ -1,0 +1,60 @@
+# Maintainer: LOUST-PRO Packaging <opensource@loust.pro>
+# Upstream:    https://github.com/LOUST-PRO/LinkMarks
+#
+# PKGBUILD — starter template for downstream Arch maintainers.
+# Bump `pkgver=` and `sha256sums=` against the upstream tag.
+#
+# Build:   makepkg -si
+# Verify:  namcap *.pkg.tar.zst
+
+pkgname=linkmarks
+pkgver=2.1.0
+pkgrel=1
+pkgdesc='Local-first bookmark manager (CLI + TUI + bridges).'
+arch=('x86_64' 'aarch64')
+url='https://github.com/LOUST-PRO/LinkMarks'
+license=('AGPL3' 'custom:Commercial')
+depends=('gcc-libs')
+makedepends=('cargo' 'rustc>=1.78' 'git')
+optdepends=(
+  'bash-completion: bash tab-completion'
+  'zsh: zsh tab-completion'
+  'fish: fish tab-completion'
+)
+# Source from a v-tagged tarball at release time. Dev builds use
+# `git+https://...#tag=v2.1.0` instead.
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/LOUST-PRO/LinkMarks/archive/refs/tags/v${pkgver}.tar.gz")
+b2sums=('SKIP')
+
+# Maintainer-side integrity check. Replaced with a real value before
+# uploading to AUR; `SKIP` is only valid for local-only builds.
+sha256sums=('SKIP')
+
+build() {
+  cd "LinkMarks-${pkgver}"
+  export CARGO_TERM_COLOR=always
+  cargo build --release --bin linkmarks --locked
+}
+
+package() {
+  cd "LinkMarks-${pkgver}"
+  install -Dm 0755 target/release/linkmarks \
+    "${pkgdir}/usr/bin/linkmarks"
+
+  install -Dm 0644 LICENSE \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm 0644 LICENSE-COMMERCIAL.md \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-COMMERCIAL.md"
+
+  if [ -f docs/man/linkmarks.1 ]; then
+    install -Dm 0644 docs/man/linkmarks.1 \
+      "${pkgdir}/usr/share/man/man1/linkmarks.1"
+    gzip -9n "${pkgdir}/usr/share/man/man1/linkmarks.1"
+  fi
+
+  # Shell completions — generated at install time via the binary
+  # itself. No packaged source files; downstream policy decides
+  # whether to ship them or leave them as a post-install step.
+  install -Dm 0755 "${srcdir}/LinkMarks-${pkgver}/arch/linkmarks.install" \
+    "${pkgdir}/usr/share/libalpm/scripts/linkmarks-install"
+}

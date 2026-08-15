@@ -4,6 +4,63 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-08-15
+
+Minor release — F2.5 batch: fuzzy filter, sort modes, shell
+completions, packaging templates, README refresh.
+
+### Added
+- **TUI fuzzy filter** — `crates/linkmarks-tui/src/filter.rs`
+  (~190 LOC) wraps `nucleo = "0.5"` so the rest of the crate does
+  not depend on its API surface. Press `/` to switch the filter
+  from substring to fuzzy mode. `CaseMatching::Ignore` is the
+  canonical mode for bookmark search (users typing `HELLO` almost
+  always mean `hello`).
+- **TUI sort modes** — `crates/linkmarks-tui/src/sort.rs`
+  (~180 LOC): `SortMode::{CanonicalUrl, Title, CreatedDesc,
+  UpdatedDesc}`. Stable tie-break preserves the input order so
+  alternating sort modes does not visually jitter the list.
+- **Shell completions** — new `completions <shell>` subcommand
+  (`crates/linkmarks-cli/src/cmd/completions.rs`) emits a fresh
+  completion script for `bash`, `zsh`, `fish`, `powershell`, and
+  `elvish`. The script is regenerated from the live `Cli` parser
+  at install time so a renamed flag surfaces immediately. 6
+  tests cover each shell format (one structural signature +
+  one that confirms every shell appears in `--help`).
+- **Packaging templates** — declarative stubs under
+  `debian/{control,rules,changelog,copyright,compat,source/format}`,
+  `rpm/linkmarks.spec`, `arch/{PKGBUILD,.SRCINFO,linkmarks.install}`,
+  `homebrew/linkmarks.rb`. Each directory has a `README.md`
+  documenting the maintenance contract and the anti-feature
+  conformance check. **No packages are built upstream**;
+  downstream maintainers adapt the templates to their distro
+  policy.
+- **README refresh** — Install / Subcommands / CI / Exit codes /
+  Project layout / Packaging / Environment sections all sync
+  to v2.1.0.
+
+### Changed
+- Workspace version bump: 2.0.1 → **2.1.0**. Single source of
+  truth in `[workspace.package] version`; all 6 crates inherit.
+- `clap_complete = "4"` added to `[workspace.dependencies]`.
+
+### Test surface
+- Total tests: **286 / 286 green**
+  (`cargo test --workspace --no-fail-fast`).
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+- `cargo build --workspace --all-targets` clean.
+- `cargo fmt --all -- --check` clean.
+
+### Anti-features (locked — unchanged from v2.0.0)
+- No telemetry, no phoning home, no automatic update notifier.
+- No server-authoritative mode.
+- No AI-without-cost-gate.
+- No Docker-only deploy.
+- No closed-source build.
+- No packaging-time shell-completion install — completions are
+  generated on demand by the binary the operator just installed,
+  not baked into a package.
+
 ## [2.0.1] — 2026-08-15
 
 Patch release — Dependabot `rust-security` group bump + compat fixes.

@@ -1,0 +1,6 @@
+linkmarks (2.1.0-1) unstable; urgency=medium
+
+  * Upstream release 2.1.0 (F2.5 batch: fuzzy filter, sort modes,
+    shell completions for bash/zsh/fish/powershell/elvish).
+
+ -- LOUST-PRO Packaging <opensource@loust.pro>  Fri, 15 Aug 2026 00:00:00 +0000
