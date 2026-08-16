@@ -26,6 +26,9 @@ pub enum AppAction {
     FilterBackspace,
     /// Accept the current filter (Enter inside filter mode).
     FilterAccept,
+    /// Cycle the filter mode (`Substring` → `Tag` → `Fuzzy` → `Substring`).
+    /// Only valid while in filter mode.
+    CycleFilterMode,
     /// Move the cursor up by one.
     MoveUp,
     /// Move the cursor down by one.
@@ -38,6 +41,8 @@ pub enum AppAction {
     Top,
     /// Jump to the last row.
     Bottom,
+    /// Cycle the sort mode through the four documented variants.
+    CycleSort,
 }
 
 /// Default key bindings.
@@ -81,12 +86,21 @@ fn map_global(key: KeyEvent) -> AppAction {
         KeyCode::Char('?') => AppAction::ShowHelp,
         KeyCode::F(1) => AppAction::ShowHelp,
         KeyCode::Char('r') | KeyCode::F(5) => AppAction::Refresh,
+        KeyCode::Char('s') => AppAction::CycleSort,
         KeyCode::Esc => AppAction::ShowHelp,
         _ => AppAction::Continue,
     }
 }
 
 fn map_in_filter(key: KeyEvent) -> AppAction {
+    // Ctrl+F is the canonical "toggle filter mode" — works in every
+    // common shell + terminal emulator, never conflicts with a printable
+    // character. Tab would shadow the focus-traversal convention that
+    // a11y users depend on.
+    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('f') {
+        return AppAction::CycleFilterMode;
+    }
+
     match key.code {
         KeyCode::Esc => AppAction::ExitFilter,
         KeyCode::Enter => AppAction::FilterAccept,
@@ -107,6 +121,10 @@ mod tests {
 
     fn ctrl_c() -> KeyEvent {
         KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
+    }
+
+    fn ctrl_f() -> KeyEvent {
+        KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL)
     }
 
     #[test]
@@ -186,6 +204,14 @@ mod tests {
     }
 
     #[test]
+    fn sort_cycles_on_s() {
+        assert_eq!(
+            KeyMap::map(key(KeyCode::Char('s')), false),
+            AppAction::CycleSort
+        );
+    }
+
+    #[test]
     fn filter_mode_uses_chars() {
         assert_eq!(
             KeyMap::map(key(KeyCode::Char('j')), true),
@@ -222,6 +248,20 @@ mod tests {
     fn filter_mode_arrows_are_no_ops() {
         assert_eq!(KeyMap::map(key(KeyCode::Down), true), AppAction::Continue);
         assert_eq!(KeyMap::map(key(KeyCode::Up), true), AppAction::Continue);
+    }
+
+    #[test]
+    fn filter_mode_ctrl_f_cycles_filter_mode() {
+        // Ctrl+F is the only way to reach FilterMode::Fuzzy / Tag from
+        // the keyboard — these modes have no other entry point.
+        assert_eq!(KeyMap::map(ctrl_f(), true), AppAction::CycleFilterMode);
+    }
+
+    #[test]
+    fn ctrl_f_outside_filter_is_a_no_op() {
+        // Don't leak the CycleFilterMode action when the user is just
+        // browsing — would be confusing on `Ctrl+F` in the list pane.
+        assert_eq!(KeyMap::map(ctrl_f(), false), AppAction::Continue);
     }
 
     #[test]

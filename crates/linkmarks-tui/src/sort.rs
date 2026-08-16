@@ -14,19 +14,23 @@ pub enum SortMode {
     UpdatedDesc,
     /// Alphabetical by `title`, case-insensitive (ascending).
     TitleAsc,
-    /// Group by source kind, then alphabetical by title.
-    SourceAsc,
+    /// Alphabetical by `canonical_url`, case-insensitive (ascending).
+    /// Useful for forensic dedupe review and "same domain grouping".
+    CanonicalUrl,
+    /// Most recent `created_at` first (newest imports on top).
+    CreatedDesc,
 }
 
 impl SortMode {
-    /// Return the next mode in a fixed 3-way cycle:
-    /// `UpdatedDesc → TitleAsc → SourceAsc → UpdatedDesc`.
+    /// Return the next mode in a fixed 4-way cycle:
+    /// `UpdatedDesc → TitleAsc → CanonicalUrl → CreatedDesc → UpdatedDesc`.
     #[must_use]
     pub fn next(self) -> Self {
         match self {
             SortMode::UpdatedDesc => SortMode::TitleAsc,
-            SortMode::TitleAsc => SortMode::SourceAsc,
-            SortMode::SourceAsc => SortMode::UpdatedDesc,
+            SortMode::TitleAsc => SortMode::CanonicalUrl,
+            SortMode::CanonicalUrl => SortMode::CreatedDesc,
+            SortMode::CreatedDesc => SortMode::UpdatedDesc,
         }
     }
 
@@ -36,9 +40,18 @@ impl SortMode {
         match self {
             SortMode::UpdatedDesc => "updated",
             SortMode::TitleAsc => "title",
-            SortMode::SourceAsc => "source",
+            SortMode::CanonicalUrl => "url",
+            SortMode::CreatedDesc => "created",
         }
     }
+
+    /// All modes in cycle order. Stable across releases.
+    pub const ALL: [SortMode; 4] = [
+        SortMode::UpdatedDesc,
+        SortMode::TitleAsc,
+        SortMode::CanonicalUrl,
+        SortMode::CreatedDesc,
+    ];
 }
 
 /// Sort `bookmarks` in place using `mode`.
@@ -58,12 +71,15 @@ pub fn sort_bookmarks(bookmarks: &mut [Bookmark], mode: SortMode) {
                 .cmp(&b.title.to_lowercase())
                 .then_with(|| a.id.0.cmp(&b.id.0))
         }),
-        SortMode::SourceAsc => bookmarks.sort_by(|a, b| {
-            a.source
-                .kind
-                .as_cli_str()
-                .cmp(b.source.kind.as_cli_str())
-                .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+        SortMode::CanonicalUrl => bookmarks.sort_by(|a, b| {
+            a.canonical_url
+                .to_lowercase()
+                .cmp(&b.canonical_url.to_lowercase())
+                .then_with(|| a.id.0.cmp(&b.id.0))
+        }),
+        SortMode::CreatedDesc => bookmarks.sort_by(|a, b| {
+            b.created_at
+                .cmp(&a.created_at)
                 .then_with(|| a.id.0.cmp(&b.id.0))
         }),
     }
@@ -75,19 +91,19 @@ mod tests {
     use chrono::{TimeZone, Utc};
     use linkmarks_core::model::{BookmarkId, SourceKind, SourceRef};
 
-    fn bm(title: &str, kind: SourceKind, updated_at: i64) -> Bookmark {
+    fn bm(title: &str, url: &str, created_at: i64, updated_at: i64) -> Bookmark {
         Bookmark {
             id: BookmarkId::generate(),
-            original_url: format!("https://example.com/{title}"),
-            canonical_url: format!("https://example.com/{title}"),
+            original_url: url.into(),
+            canonical_url: url.into(),
             title: title.into(),
             description: None,
             tags: vec![],
             collection: None,
-            created_at: Utc.timestamp_opt(updated_at, 0).unwrap(),
+            created_at: Utc.timestamp_opt(created_at, 0).unwrap(),
             updated_at: Utc.timestamp_opt(updated_at, 0).unwrap(),
             source: SourceRef {
-                kind,
+                kind: SourceKind::Chromium,
                 external_id: None,
                 imported_at: Utc.timestamp_opt(updated_at, 0).unwrap(),
                 raw: None,
@@ -103,27 +119,35 @@ mod tests {
     }
 
     #[test]
-    fn next_cycles_through_three_modes() {
+    fn next_cycles_through_four_modes() {
         assert_eq!(SortMode::UpdatedDesc.next(), SortMode::TitleAsc);
-        assert_eq!(SortMode::TitleAsc.next(), SortMode::SourceAsc);
-        assert_eq!(SortMode::SourceAsc.next(), SortMode::UpdatedDesc);
+        assert_eq!(SortMode::TitleAsc.next(), SortMode::CanonicalUrl);
+        assert_eq!(SortMode::CanonicalUrl.next(), SortMode::CreatedDesc);
+        assert_eq!(SortMode::CreatedDesc.next(), SortMode::UpdatedDesc);
+    }
+
+    #[test]
+    fn all_constant_matches_next_cycle() {
+        assert_eq!(SortMode::ALL.len(), 4);
+        for (i, mode) in SortMode::ALL.iter().enumerate() {
+            let next = mode.next();
+            let expected = SortMode::ALL[(i + 1) % SortMode::ALL.len()];
+            assert_eq!(next, expected, "ALL[{i}].next() != ALL[(i+1)%4]");
+        }
     }
 
     #[test]
     fn labels_are_stable() {
         assert_eq!(SortMode::UpdatedDesc.label(), "updated");
         assert_eq!(SortMode::TitleAsc.label(), "title");
-        assert_eq!(SortMode::SourceAsc.label(), "source");
+        assert_eq!(SortMode::CanonicalUrl.label(), "url");
+        assert_eq!(SortMode::CreatedDesc.label(), "created");
     }
 
     #[test]
     fn empty_vec_does_not_panic() {
         let mut v: Vec<Bookmark> = vec![];
-        for mode in [
-            SortMode::UpdatedDesc,
-            SortMode::TitleAsc,
-            SortMode::SourceAsc,
-        ] {
+        for mode in SortMode::ALL {
             sort_bookmarks(&mut v, mode);
         }
         assert!(v.is_empty());
@@ -132,9 +156,9 @@ mod tests {
     #[test]
     fn updated_desc_orders_newest_first() {
         let mut v = vec![
-            bm("a", SourceKind::Chromium, 1_700_000_000),
-            bm("b", SourceKind::Chromium, 1_700_000_500),
-            bm("c", SourceKind::Chromium, 1_700_000_100),
+            bm("a", "https://a", 1_700_000_000, 1_700_000_000),
+            bm("b", "https://b", 1_700_000_000, 1_700_000_500),
+            bm("c", "https://c", 1_700_000_000, 1_700_000_100),
         ];
         sort_bookmarks(&mut v, SortMode::UpdatedDesc);
         let titles: Vec<&str> = v.iter().map(|b| b.title.as_str()).collect();
@@ -144,37 +168,57 @@ mod tests {
     #[test]
     fn title_asc_is_case_insensitive() {
         let mut v = vec![
-            bm("banana", SourceKind::Chromium, 1),
-            bm("Apple", SourceKind::Chromium, 1),
-            bm("cherry", SourceKind::Chromium, 1),
+            bm("banana", "https://b", 1, 1),
+            bm("Apple", "https://a", 1, 1),
+            bm("cherry", "https://c", 1, 1),
         ];
         sort_bookmarks(&mut v, SortMode::TitleAsc);
         let titles: Vec<&str> = v.iter().map(|b| b.title.as_str()).collect();
-        // "Apple" → "apple"; at index 2 "apple" < "apricot" because 'p' < 'r'.
         assert_eq!(titles, vec!["Apple", "banana", "cherry"]);
     }
 
     #[test]
-    fn source_asc_groups_by_source_then_title() {
+    fn canonical_url_asc_is_case_insensitive() {
         let mut v = vec![
-            bm("netscape-z", SourceKind::Netscape, 1),
-            bm("chrome-a", SourceKind::Chromium, 1),
-            bm("chrome-b", SourceKind::Chromium, 1),
-            bm("firefox-z", SourceKind::Firefox, 1),
+            bm("a", "https://example.com/zzz", 1, 1),
+            bm("b", "https://example.com/aaa", 1, 1),
+            bm("c", "https://example.com/mmm", 1, 1),
         ];
-        sort_bookmarks(&mut v, SortMode::SourceAsc);
-        let labels: Vec<String> = v
-            .iter()
-            .map(|b| format!("{}/{}", b.source.kind.as_cli_str(), b.title))
-            .collect();
+        sort_bookmarks(&mut v, SortMode::CanonicalUrl);
+        let urls: Vec<&str> = v.iter().map(|b| b.canonical_url.as_str()).collect();
         assert_eq!(
-            labels,
+            urls,
             vec![
-                "chrome/chrome-a".to_string(),
-                "chrome/chrome-b".to_string(),
-                "firefox/firefox-z".to_string(),
-                "netscape/netscape-z".to_string(),
+                "https://example.com/aaa",
+                "https://example.com/mmm",
+                "https://example.com/zzz",
             ]
         );
+    }
+
+    #[test]
+    fn created_desc_orders_newest_first() {
+        let mut v = vec![
+            bm("a", "https://a", 1_700_000_000, 1),
+            bm("b", "https://b", 1_700_000_500, 1),
+            bm("c", "https://c", 1_700_000_100, 1),
+        ];
+        sort_bookmarks(&mut v, SortMode::CreatedDesc);
+        let titles: Vec<&str> = v.iter().map(|b| b.title.as_str()).collect();
+        assert_eq!(titles, vec!["b", "c", "a"]);
+    }
+
+    #[test]
+    fn ties_break_by_id_for_full_determinism() {
+        // Same created_at + updated_at + title + url → only id breaks tie.
+        let mut v = vec![
+            bm("same", "https://same", 1, 1),
+            bm("same", "https://same", 1, 1),
+        ];
+        sort_bookmarks(&mut v, SortMode::TitleAsc);
+        let ids: Vec<String> = v.iter().map(|b| b.id.0.clone()).collect();
+        let mut sorted = ids.clone();
+        sorted.sort();
+        assert_eq!(ids, sorted, "id tie-break must be sorted ascending");
     }
 }

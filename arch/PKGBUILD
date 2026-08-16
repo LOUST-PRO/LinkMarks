@@ -21,6 +21,11 @@ optdepends=(
   'zsh: zsh tab-completion'
   'fish: fish tab-completion'
 )
+# Pacman install hooks — `linkmarks.install` is invoked by pacman on
+# install / upgrade / remove. The `install=…` directive is the
+# canonical mechanism; copying scripts into /usr/share/libalpm/scripts
+# is the leftover Debian-helper habit and pacman ignores those files.
+install=linkmarks.install
 # Source from a v-tagged tarball at release time. Dev builds use
 # `git+https://...#tag=v2.1.0` instead.
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/LOUST-PRO/LinkMarks/archive/refs/tags/v${pkgver}.tar.gz")
@@ -51,10 +56,4 @@ package() {
       "${pkgdir}/usr/share/man/man1/linkmarks.1"
     gzip -9n "${pkgdir}/usr/share/man/man1/linkmarks.1"
   fi
-
-  # Shell completions — generated at install time via the binary
-  # itself. No packaged source files; downstream policy decides
-  # whether to ship them or leave them as a post-install step.
-  install -Dm 0755 "${srcdir}/LinkMarks-${pkgver}/arch/linkmarks.install" \
-    "${pkgdir}/usr/share/libalpm/scripts/linkmarks-install"
 }

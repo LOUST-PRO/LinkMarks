@@ -186,9 +186,10 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
             let total = app.bookmarks.len();
             let errors = app.registry.errors.len();
             let base = format!(
-                "{} / {} bookmarks   {}",
+                "{} / {} bookmarks   sort: {}   {}",
                 visible,
                 total,
+                app.sort_mode.label(),
                 app.registry.summary()
             );
             if errors > 0 {
@@ -218,6 +219,8 @@ LinkMarks TUI
   PgUp / PgDn   page up / down
   Enter         open bookmark in browser
   /             filter (substring)
+  Ctrl+F        cycle filter mode (substring / tag / fuzzy)
+  s             cycle sort mode (updated / title / url / created)
   ?             toggle this help
   r / F5        refresh
   q / Ctrl-C    quit

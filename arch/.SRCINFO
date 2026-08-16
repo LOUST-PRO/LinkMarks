@@ -14,6 +14,7 @@ pkgbase = linkmarks
 	makedepends = cargo
 	makedepends = rustc>=1.78
 	makedepends = git
+	install = linkmarks.install
 	source = linkmarks-2.1.0.tar.gz::https://github.com/LOUST-PRO/LinkMarks/archive/refs/tags/v2.1.0.tar.gz
 	b2sums = SKIP
 	sha256sums = SKIP

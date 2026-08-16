@@ -108,6 +108,8 @@ fn handle_key(app: &mut App, key: KeyEvent) {
         | AppAction::FilterChar(_)
         | AppAction::FilterBackspace
         | AppAction::FilterAccept
+        | AppAction::CycleFilterMode
+        | AppAction::CycleSort
         | AppAction::MoveUp
         | AppAction::MoveDown
         | AppAction::PageUp

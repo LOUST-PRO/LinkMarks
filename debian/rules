@@ -3,14 +3,20 @@
 #
 # Build flow:
 #   1. cargo build --release (linkmarks-cli subcommand)
-#   2. cargo build --release --bin completion-scripts (left as a
-#      downstream policy decision — uncomment if the package builds
-#      bash/zsh/fish completions at build time)
-#   3. install binary to debian/linkmarks/usr/bin/
-#   4. install manpage to debian/linkmarks/usr/share/man/man1/
+#   2. install binary to debian/linkmarks/usr/bin/
+#   3. install manpage to debian/linkmarks/usr/share/man/man1/
+#
+# Notes:
+#   - Use `--buildsystem cargo` (the modern dh-cargo hook), not the
+#     deprecated `--with cargo`. The latter is the legacy compat
+#     shim and emits warnings on recent debhelper.
+#   - Honour `DEB_BUILD_OPTIONS=nocheck` — dpkg-buildpackage passes
+#     that when the user wants to skip the test phase. We default
+#     to skip because upstream CI runs the same matrix; rebuilding
+#     on every dpkg-buildpackage is duplicate compute.
 
 %:
-	dh $@ --with cargo
+	dh $@ --buildsystem cargo
 
 override_dh_auto_build:
 	cargo build --release --bin linkmarks
@@ -28,6 +34,12 @@ override_dh_auto_install:
 	fi
 
 override_dh_auto_test:
-	# Tests are run by CI upstream. Re-running on `dpkg-buildpackage`
-	# duplicates ~5 min of compute and is non-additive. Skip.
-	true
+	# Honour the upstream-style convention: skip tests unless the
+	# packager explicitly opts in via `DEB_BUILD_OPTIONS=nocheck` —
+	# which means "I want tests skipped". Inversely, if the user
+	# does NOT set nocheck, run the full test suite.
+	ifneq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+		@echo "DEB_BUILD_OPTIONS=nocheck set — skipping linkmarks tests"
+	else
+		cargo test --workspace --release
+	endif

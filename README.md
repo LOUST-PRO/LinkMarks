@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0%2Bcommercial-blue)
 ![Made with Rust](https://img.shields.io/badge/made%20with-Rust-orange)
-![Version](https://img.shields.io/badge/version-v2.1.0-blue)
+![Version](https://img.shields.io/badge/version-v2.1.1-blue)
 ![CI](https://github.com/LOUST-PRO/LinkMarks/actions/workflows/ci-smoke.yml/badge.svg)
 ![Self-hosted](https://img.shields.io/badge/self--hosted-yes-green)
 ![Local-first](https://img.shields.io/badge/local--first-yes-green)
@@ -73,10 +73,16 @@ LATEST=$(curl -sSL https://api.github.com/repos/LOUST-PRO/LinkMarks/releases/lat
 curl -sSL "https://github.com/LOUST-PRO/LinkMarks/releases/download/${LATEST}/linkmarks-${LATEST}-x86_64-unknown-linux-gnu.tar.xz" \
   | tar -xJ --strip-components=1 -C ~/.local/bin linkmarks-x86_64-unknown-linux-gnu/linkmarks
 
-# 2) cargo install — pulls the same source from crates.io / git
+# 2) cargo install — pulls the same source from crates.io / git.
+#    The `--path` flag is required for a workspace: the `linkmarks`
+#    binary lives in `crates/linkmarks-cli`. `--locked` pins the
+#    build to the shipped Cargo.lock so feature resolution matches
+#    CI exactly.
 cargo install --git https://github.com/LOUST-PRO/LinkMarks \
   --tag v2.1.0 \
-  --bin linkmarks
+  --path crates/linkmarks-cli \
+  --bin linkmarks \
+  --locked
 
 # 3) Build from source (requires Rust 1.78+)
 git clone https://github.com/LOUST-PRO/LinkMarks
@@ -173,7 +179,7 @@ files a CONCERNS.md entry against the anti-feature list when it diverges.
 
 ## Project layout
 
-```
+```text
 crates/
 ├── linkmarks-core/                # SQLite store, model, paths, config
 ├── linkmarks-cli/                 # `linkmarks` binary, subcommands, completions
@@ -197,8 +203,8 @@ crates/
 
 ## Contributing
 
-Issues and PRs welcome. Read
-[`CONTRIBUTING`](./.github/PULL_REQUEST_TEMPLATE.md) and
+Issues and PRs welcome. Read the
+[`PR template`](./.github/PULL_REQUEST_TEMPLATE.md) and
 [`docs/CONCERNS.md`](./docs/CONCERNS.md) before opening a PR that
 adds scope. CI must be green:
 [`fmt + build + test + clippy + release-binary smoke + groff

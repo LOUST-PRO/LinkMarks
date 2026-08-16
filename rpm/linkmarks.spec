@@ -12,7 +12,10 @@ Name:           linkmarks
 Version:        2.1.0
 Release:        1%{?dist}
 Summary:        Local-first bookmark manager
-License:        AGPL-3.0-or-later AND LicenseRef-Commercial
+# Dual-license: SPDX expression uses OR (not AND) — the user picks
+# one of the two licenses, not both. AND would mean "you must comply
+# with both at once", which is not what dual-licensing means.
+License:        AGPL-3.0-or-later OR LicenseRef-Commercial
 URL:            https://github.com/LOUST-PRO/LinkMarks
 Source0:        https://github.com/LOUST-PRO/LinkMarks/archive/refs/tags/v%{version}.tar.gz
 BuildArch:      %{_target_cpu}

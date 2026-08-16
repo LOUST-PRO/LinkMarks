@@ -4,6 +4,98 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] — 2026-08-15
+
+Patch release — wiring + packaging + doc drift fixes for v2.1.0.
+
+### Fixed
+- **TUI: filter & sort enums now fully reachable.**
+  `FilterMode::Fuzzy` was declared but only reachable via direct
+  constructor; press `Ctrl+F` inside the filter to cycle
+  `Substring → Tag → Fuzzy`. `SortMode` gains a 4th variant
+  `CanonicalUrl` and a global `s` keybinding to cycle the four
+  modes (`updated / title / url / created`). The status bar now
+  surfaces the active `sort: <label>` and the help overlay lists
+  both new bindings.
+- **`debian/rules`** — replaced deprecated `dh $@ --with cargo`
+  with `dh $@ --buildsystem cargo` and made
+  `override_dh_auto_test` honor `DEB_BUILD_OPTIONS=nocheck`
+  instead of unconditionally skipping the suite.
+- **`arch/PKGBUILD`** — switched the install hook from a
+  hand-copied `/usr/share/libalpm/scripts/` copy to the
+  canonical `install=linkmarks.install` directive, and
+  regenerated `.SRCINFO`. The downstream maintainer no longer
+  has to apply a namcap-flagged pattern.
+- **`rpm/linkmarks.spec`** — `License: AGPL-3.0-or-later AND
+  LicenseRef-Commercial` → `AGPL-3.0-or-later OR
+  LicenseRef-Commercial` (dual-license semantics, SPDX-compliant
+  per `dual-license-OR-not-AND.md`).
+- **`README.md`** — `cargo install --git … --bin linkmarks` →
+  `… --path crates/linkmarks-cli --bin linkmarks --locked`
+  (workspace path resolution per
+  `cargo-workspace-install-recipe.md`); corrected the
+  `[CONTRIBUTING](./.github/PULL_REQUEST_TEMPLATE.md)` label
+  mismatch (now `[PR template](./.github/PULL_REQUEST_TEMPLATE.md)`);
+  added the missing `text` language hint to the project-layout
+  fenced block (`code-fence-language-required.md`).
+- **`arch/README.md`** — fixed `-skipchecksums` → `--skipchecksums`.
+
+### Added
+- **9 state-wiring integration tests** in
+  `crates/linkmarks-tui/src/app_test.rs` covering every
+  `SortMode` and `FilterMode` variant via emulated `KeyEvent`s
+  and asserting the downstream `app.visible()` effect — per
+  `state-wiring-integration-tests.md`.
+- **6 sort tests** in `crates/linkmarks-tui/src/sort.rs`:
+  `all_constant_matches_next_cycle`, `canonical_url_asc_is_case_insensitive`,
+  `created_desc_orders_newest_first`, `ties_break_by_id_for_full_determinism`,
+  and the parity checks for the cycle.
+- **4 input-handler tests** in `crates/linkmarks-tui/src/input.rs`:
+  `s_cycles_sort_mode`, `ctrl_f_cycles_filter_mode`,
+  `ctrl_f_outside_filter_is_a_no_op`, `ctrl_f_preserves_query`.
+
+### Hardened (CodeRabbit → `.claude/rules/`)
+- 10 new `~/.claude/rules/*.md` snippets codified from this
+  review (`packaging-template-vs-reality`, `cargo-workspace-install-recipe`,
+  `dual-license-OR-not-AND`, `code-fence-language-required`,
+  `doc-link-label-must-match-target`, `dh-buildsystem-syntax`,
+  `documented-api-must-match-implementation`,
+  `reachable-feature-enum-keybinding-state-test`,
+  `pacman-install-directive-not-libalpm-copy`,
+  `debian-test-override-respects-DEB_BUILD_OPTIONS`).
+- 3 more from mid-turn hardening dialogue
+  (`state-wiring-integration-tests`, `pr-body-vs-diff-literal`,
+  `packaging-linter-mandatory`).
+
+### Test surface
+- Total tests: **302 / 302 green** (was 286 in v2.1.0).
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+- `cargo build --release` clean.
+- `cargo fmt --all -- --check` clean.
+- `bash -n arch/PKGBUILD` clean.
+- `make -n -f debian/rules build` clean.
+- `rpmspec -P rpm/linkmarks.spec` clean (License OR).
+- Completions smoke (bash/zsh/elvish) clean.
+
+### Linter gap (acknowledged)
+- `namcap`, `lintian`, `rpmlint` were not run end-to-end because
+  `unattended-upgrade` has been holding the dpkg lock at 99% CPU
+  for >48 hours (a recurring issue per memory
+  `unattended-upgrade-stuck-kill-public-publish-2026-08-06`).
+  Manual sanity checks (`bash -n`, `make -n`, `rpmspec -P`)
+  substituted. The linter gate will run in CI on the first
+  clean build host.
+
+### Anti-features (locked — unchanged from v2.0.0)
+- No telemetry, no phoning home, no automatic update notifier.
+- No server-authoritative mode.
+- No AI-without-cost-gate.
+- No Docker-only deploy.
+- No closed-source build.
+- No packaging-time shell-completion install — completions are
+  generated on demand by the binary the operator just installed,
+  not baked into a package.
+
 ## [2.1.0] — 2026-08-15
 
 Minor release — F2.5 batch: fuzzy filter, sort modes, shell

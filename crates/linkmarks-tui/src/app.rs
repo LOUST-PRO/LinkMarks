@@ -5,6 +5,7 @@ use linkmarks_core::model::Bookmark;
 use crate::config::AppConfig;
 use crate::input::{AppAction, KeyMap};
 use crate::registry::SourceRegistry;
+use crate::sort::{sort_bookmarks, SortMode};
 use crate::state::{AppState, FilterMode};
 
 /// Maximum number of rows one `PageUp` / `PageDown` jumps.
@@ -20,6 +21,9 @@ pub struct App {
     pub selected: usize,
     /// State machine.
     pub state: AppState,
+    /// Active sort mode. Cycled by `s` (global), applied on every
+    /// `reload()` and immediately after the cycle.
+    pub sort_mode: SortMode,
     /// Resolved config (kept for diagnostics + future hot-reload).
     pub config: AppConfig,
 }
@@ -33,15 +37,18 @@ impl App {
             bookmarks: Vec::new(),
             selected: 0,
             state: AppState::Loading,
+            sort_mode: SortMode::default(),
             config,
         };
         app.reload();
         app
     }
 
-    /// Re-read bookmarks from the registry. Resets the cursor.
+    /// Re-read bookmarks from the registry. Resets the cursor and
+    /// re-applies the current sort mode.
     pub fn reload(&mut self) {
-        let bookmarks = self.registry.load_all();
+        let mut bookmarks = self.registry.load_all();
+        sort_bookmarks(&mut bookmarks, self.sort_mode);
         self.bookmarks = bookmarks;
         self.selected = 0;
         self.state = AppState::List;
@@ -99,6 +106,18 @@ impl App {
                 self.state = AppState::List;
                 AppAction::Continue
             }
+            AppAction::CycleFilterMode => {
+                if let AppState::Filter { query, mode } = &mut self.state {
+                    *mode = match mode {
+                        FilterMode::Substring => FilterMode::Tag,
+                        FilterMode::Tag => FilterMode::Fuzzy,
+                        FilterMode::Fuzzy => FilterMode::Substring,
+                    };
+                    let _ = query; // keep the same query
+                    self.selected = 0;
+                }
+                AppAction::Continue
+            }
             AppAction::MoveUp => {
                 self.move_cursor(-1);
                 AppAction::Continue
@@ -138,6 +157,12 @@ impl App {
             AppAction::Refresh => {
                 self.reload();
                 AppAction::Refresh
+            }
+            AppAction::CycleSort => {
+                self.sort_mode = self.sort_mode.next();
+                sort_bookmarks(&mut self.bookmarks, self.sort_mode);
+                self.selected = 0;
+                AppAction::Continue
             }
         }
     }
@@ -209,6 +234,7 @@ mod tests {
     use super::*;
     use crate::config::SourceSelection;
     use chrono::{TimeZone, Utc};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use linkmarks_core::model::{BookmarkId, SourceKind, SourceRef};
     use std::path::PathBuf;
 
@@ -232,6 +258,14 @@ mod tests {
             content_type: None,
             archived: false,
         }
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    fn ctrl_f() -> KeyEvent {
+        KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL)
     }
 
     fn app_with(bookmarks: Vec<Bookmark>) -> App {
@@ -263,25 +297,13 @@ mod tests {
             bm("b", "https://b"),
             bm("c", "https://c"),
         ]);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('G'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('G')));
         assert_eq!(app.selected, 2);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('j'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('j')));
         assert_eq!(app.selected, 2);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('g'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('g')));
         assert_eq!(app.selected, 0);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('k'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('k')));
         assert_eq!(app.selected, 0);
     }
 
@@ -292,20 +314,14 @@ mod tests {
                 .map(|i| bm(&format!("b{i}"), &format!("https://x/{i}")))
                 .collect(),
         );
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::PageDown,
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::PageDown));
         assert_eq!(app.selected, 10);
     }
 
     #[test]
     fn quit_sets_state() {
         let mut app = app_with(vec![bm("a", "https://a")]);
-        let action = app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('q'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        let action = app.on_key(key(KeyCode::Char('q')));
         assert_eq!(action, AppAction::Quit(0));
         assert!(matches!(app.state, AppState::Quit(0)));
     }
@@ -316,15 +332,9 @@ mod tests {
             bm("Rust book", "https://doc.rust-lang.org"),
             bm("Python tutorial", "https://python.org"),
         ]);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('/'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('/')));
         for c in "rust".chars() {
-            app.on_key(crossterm::event::KeyEvent::new(
-                crossterm::event::KeyCode::Char(c),
-                crossterm::event::KeyModifiers::NONE,
-            ));
+            app.on_key(key(KeyCode::Char(c)));
         }
         let v = app.visible();
         assert_eq!(v.len(), 1);
@@ -334,14 +344,8 @@ mod tests {
     #[test]
     fn filter_esc_returns_to_full_list() {
         let mut app = app_with(vec![bm("a", "https://a"), bm("b", "https://b")]);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('/'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Esc,
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('/')));
+        app.on_key(key(KeyCode::Esc));
         let v = app.visible();
         assert_eq!(v.len(), 2);
     }
@@ -349,24 +353,209 @@ mod tests {
     #[test]
     fn open_in_filter_interpretation_does_not_move_cursor() {
         let mut app = app_with(vec![bm("a", "https://a"), bm("b", "https://b")]);
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('/'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
-        app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::Char('j'),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        app.on_key(key(KeyCode::Char('/')));
+        app.on_key(key(KeyCode::Char('j')));
         assert_eq!(app.selected, 0);
     }
 
     #[test]
     fn unknown_key_is_a_no_op() {
         let mut app = app_with(vec![bm("a", "https://a")]);
-        let action = app.on_key(crossterm::event::KeyEvent::new(
-            crossterm::event::KeyCode::F(12),
-            crossterm::event::KeyModifiers::NONE,
-        ));
+        let action = app.on_key(key(KeyCode::F(12)));
         assert_eq!(action, AppAction::Continue);
+    }
+
+    // --- State-wiring integration tests (per state-gating rule) ---
+    //
+    // Every enum variant exposed in `state.rs` / `sort.rs` MUST have a
+    // reachable keybinding and a visible App mutation exercised here.
+    // The 1.x release shipped `FilterMode::Fuzzy` and a 4-variant
+    // `SortMode` documented in the README with no UI path; this
+    // regression class is the one we want to catch next time.
+
+    #[test]
+    fn state_wiring_sort_starts_at_default() {
+        let app = app_with(vec![bm("a", "https://a")]);
+        assert_eq!(app.sort_mode, SortMode::UpdatedDesc);
+    }
+
+    #[test]
+    fn state_wiring_press_s_cycles_sort_mode() {
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        // Initial → TitleAsc
+        app.on_key(key(KeyCode::Char('s')));
+        assert_eq!(app.sort_mode, SortMode::TitleAsc);
+        // TitleAsc → CanonicalUrl
+        app.on_key(key(KeyCode::Char('s')));
+        assert_eq!(app.sort_mode, SortMode::CanonicalUrl);
+        // CanonicalUrl → CreatedDesc
+        app.on_key(key(KeyCode::Char('s')));
+        assert_eq!(app.sort_mode, SortMode::CreatedDesc);
+        // CreatedDesc → UpdatedDesc (loop)
+        app.on_key(key(KeyCode::Char('s')));
+        assert_eq!(app.sort_mode, SortMode::UpdatedDesc);
+    }
+
+    #[test]
+    fn state_wiring_press_s_actually_reorders_visible_list() {
+        // Two bookmarks with predictable titles; cycle sort and verify
+        // visible() reflects the new order. This pins the wiring
+        // between AppAction::CycleSort → sort_bookmarks.
+        let mut app = app_with(vec![
+            bm("banana", "https://banana"),
+            bm("apple", "https://apple"),
+        ]);
+        app.on_key(key(KeyCode::Char('s'))); // TitleAsc
+        let titles: Vec<String> = app.visible().iter().map(|b| b.title.clone()).collect();
+        assert_eq!(titles, vec!["apple", "banana"]);
+    }
+
+    #[test]
+    fn state_wiring_press_s_inside_filter_is_a_no_op() {
+        // `CycleSort` is global; while filter is active, `s` is
+        // interpreted as a filter char. The sort mode must NOT mutate.
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        app.on_key(key(KeyCode::Char('/')));
+        for c in "ru".chars() {
+            app.on_key(key(KeyCode::Char(c)));
+        }
+        let before = app.sort_mode;
+        app.on_key(key(KeyCode::Char('s')));
+        assert_eq!(app.sort_mode, before);
+        assert!(matches!(
+            &app.state,
+            AppState::Filter {
+                query,
+                mode: FilterMode::Substring,
+            } if query == "rus"
+        ));
+    }
+
+    #[test]
+    fn state_wiring_filter_starts_in_substring_mode() {
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        app.on_key(key(KeyCode::Char('/')));
+        assert!(matches!(
+            app.state,
+            AppState::Filter {
+                mode: FilterMode::Substring,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn state_wiring_ctrl_f_cycles_filter_mode() {
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        app.on_key(key(KeyCode::Char('/')));
+        // Substring → Tag
+        app.on_key(ctrl_f());
+        assert!(matches!(
+            app.state,
+            AppState::Filter {
+                mode: FilterMode::Tag,
+                ..
+            }
+        ));
+        // Tag → Fuzzy
+        app.on_key(ctrl_f());
+        assert!(matches!(
+            app.state,
+            AppState::Filter {
+                mode: FilterMode::Fuzzy,
+                ..
+            }
+        ));
+        // Fuzzy → Substring (loop)
+        app.on_key(ctrl_f());
+        assert!(matches!(
+            app.state,
+            AppState::Filter {
+                mode: FilterMode::Substring,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn state_wiring_ctrl_f_preserves_query_across_cycle() {
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        app.on_key(key(KeyCode::Char('/')));
+        for c in "ru".chars() {
+            app.on_key(key(KeyCode::Char(c)));
+        }
+        app.on_key(ctrl_f());
+        assert!(matches!(
+            &app.state,
+            AppState::Filter { query, mode: FilterMode::Tag } if query == "ru"
+        ));
+        app.on_key(ctrl_f());
+        assert!(matches!(
+            &app.state,
+            AppState::Filter { query, mode: FilterMode::Fuzzy } if query == "ru"
+        ));
+    }
+
+    #[test]
+    fn state_wiring_ctrl_f_outside_filter_is_a_no_op() {
+        let mut app = app_with(vec![bm("a", "https://a")]);
+        app.on_key(ctrl_f());
+        assert!(matches!(app.state, AppState::List));
+    }
+
+    #[test]
+    fn state_wiring_fuzzy_mode_actually_filters() {
+        // Verify the Fuzzy mode is wired to the fuzzy matcher (not a
+        // silent no-op). A query that fuzzy-matches a known bookmark
+        // must produce a non-empty `visible()`.
+        //
+        // Cycle: Substring → Tag → Fuzzy (two Ctrl+F presses from the
+        // starting Substring state).
+        let mut app = app_with(vec![
+            bm(
+                "Rust by Example",
+                "https://doc.rust-lang.org/rust-by-example",
+            ),
+            bm("Python tutorial", "https://python.org"),
+        ]);
+        app.on_key(key(KeyCode::Char('/')));
+        for c in "rust".chars() {
+            app.on_key(key(KeyCode::Char(c)));
+        }
+        app.on_key(ctrl_f()); // Substring → Tag
+        app.on_key(ctrl_f()); // Tag → Fuzzy
+        let v = app.visible();
+        assert!(
+            !v.is_empty(),
+            "fuzzy 'rust' should match at least one bookmark"
+        );
+        // And the Fuzzy mode must be the active state.
+        assert!(matches!(
+            app.state,
+            AppState::Filter {
+                mode: FilterMode::Fuzzy,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn state_wiring_tag_mode_does_not_match_title() {
+        // Companion to the fuzzy test: when the user cycles to Tag,
+        // the title must NOT contribute to matches — only the tag list.
+        // This pins the contract that the 3 FilterMode variants are
+        // genuinely orthogonal.
+        let mut app = app_with(vec![
+            bm("hello world", "https://x.com"),
+            bm("other", "https://y.com"),
+        ]);
+        app.on_key(key(KeyCode::Char('/')));
+        for c in "hello".chars() {
+            app.on_key(key(KeyCode::Char(c)));
+        }
+        app.on_key(ctrl_f()); // Substring → Tag
+        let v = app.visible();
+        // "hello" against empty tags → no matches.
+        assert!(v.is_empty(), "tag mode must not match against title");
     }
 }

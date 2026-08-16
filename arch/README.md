@@ -35,7 +35,7 @@ maintainers usually delete this if they consider it cargo-culted.
 ## Maintenance contract
 
 - Bump `pkgver=` whenever upstream releases. `sha256sums=` is mandatory;
-  pass `-skipchecksums` only for ad-hoc local builds, never for upload.
+  pass `--skipchecksums` only for ad-hoc local builds, never for upload.
 - Run `namcap *.pkg.tar.*` after `makepkg`; treat `E` (error) as a
   blocker, `W` (warning) as a good-citizen ask.
 - Divergence from the upstream anti-feature list requires a CONCERNS.md
