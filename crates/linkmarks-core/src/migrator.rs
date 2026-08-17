@@ -36,7 +36,7 @@ pub struct Migration {
 /// `user_version`).
 pub const MIGRATIONS: &[Migration] = &[Migration {
     version: 1,
-    description: "Fase 2 initial: bookmarks + tags",
+    description: "initial: bookmarks + tags",
     sql: MIGRATION_001_SQL,
 }];
 

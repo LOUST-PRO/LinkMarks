@@ -8,14 +8,14 @@
 //! See:
 //! - `model` — `Bookmark`, `SourceRef`, `Collection`, `Tag`
 //! - `traits` — `BookmarkSource`, `BookmarkSink`
-//! - `canonical` — URL canonicalization rules (ADR-0001)
+//! - `canonical` — URL canonicalization rules
 //! - `dedupe` — local deterministic dedupe by canonical URL
 //! - `errors` — error types
 //! - `parser` — shared parsing helpers
-//! - `paths` — XDG-aware filesystem paths (Fase 2)
-//! - `migrator` — forward-only SQLite migrator (Fase 2)
-//! - `store` — SQLite-backed bookmark store (Fase 2)
-//! - `config` — TOML config loader (Fase 2)
+//! - `paths` — XDG-aware filesystem paths
+//! - `migrator` — forward-only SQLite migrator
+//! - `store` — SQLite-backed bookmark store
+//! - `config` — TOML config loader
 
 #![deny(missing_docs)]
 #![deny(unsafe_code)]

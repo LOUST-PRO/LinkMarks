@@ -109,11 +109,9 @@ impl SourceRegistry {
                 push_netscape_defaults(&mut sources, netscape_path);
             }
             SourceSelection::Firefox => {
-                // Firefox bridge lives in a separate workspace crate
-                // (Fase 2 F3). We don't link it here to keep the TUI
-                // crate decoupled from the bridge roster; selecting
-                // Firefox explicitly produces an empty load (the
-                // store, if present, is still merged).
+                // Firefox is not yet wired into the TUI registry.
+                // Selecting Firefox explicitly produces an empty load
+                // (the store, if present, is still merged).
             }
         }
 

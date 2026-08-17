@@ -10,7 +10,7 @@
 /// files. Other entities are passed through unchanged.
 ///
 /// This is a v1 minimum implementation: full entity decoding is a
-/// Fase 2 helper used by the Netscape bridge.
+/// shared helper used by the Netscape bridge.
 #[must_use]
 pub fn decode_html_entities(input: &str) -> String {
     let mut out = String::with_capacity(input.len());

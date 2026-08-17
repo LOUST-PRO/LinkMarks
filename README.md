@@ -42,13 +42,12 @@ overridable via `LINKMARKS_STORE` / `LINKMARKS_CONFIG` env or `--store` /
 process is running.
 
 Agent-friendly surface: every subcommand supports `--format=table|json|yaml`,
-exit codes are stable (see below), and the on-disk schema is documented in
-[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+exit codes are stable (see below), and the on-disk schema is documented
+alongside the source.
 
 ## Anti-features
 
-These are decisions, not gaps. Adding them later requires a CONCERNS.md
-entry.
+These are decisions, not gaps.
 
 - **No server-authoritative mode.** The server is relay-only.
 - **No mandatory telemetry.** No phoning home. Ever.
@@ -79,7 +78,7 @@ curl -sSL "https://github.com/LOUST-PRO/LinkMarks/releases/download/${LATEST}/li
 #    build to the shipped Cargo.lock so feature resolution matches
 #    CI exactly.
 cargo install --git https://github.com/LOUST-PRO/LinkMarks \
-  --tag v2.1.0 \
+  --tag v2.1.1 \
   --path crates/linkmarks-cli \
   --bin linkmarks \
   --locked
@@ -184,29 +183,69 @@ crates/
 ├── linkmarks-core/                # SQLite store, model, paths, config
 ├── linkmarks-cli/                 # `linkmarks` binary, subcommands, completions
 ├── linkmarks-tui/                 # ratatui + crossterm browser, fuzzy + sort
+├── linkmarks-bench-crdt/          # benchmark suite that supports the CRDT choice
 └── bridges/
     ├── linkmarks-bridge-chromium  # Chrome / Brave / Edge / Arc / Vivaldi / Opera
     ├── linkmarks-bridge-firefox   # Firefox places.sqlite + jsonlz4
     └── linkmarks-bridge-netscape  # Netscape bookmark HTML export + import
+deploy/                           # self-host template for the relay (systemd, nginx, healthcheck)
+docs/
+├── man/                           # generated manpages (linkmarks.1, linkmarks-list.1, …)
+└── relay-deployment.md            # operator walkthrough for self-hosting the relay
 ```
 
-## Architecture & decisions
+## Performance (CRDT benchmark suite)
 
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — workspace tree, domain
-  model, store schema, error surface.
-- [`docs/decisions/`](./docs/decisions/) — ADRs (MADR template): licensing,
-  Dioxus-for-GUI, SQLite-as-store, tracking-param blocklist, …
-- [`docs/ROADMAP.md`](./docs/ROADMAP.md) — Fase 3 (CRDT sync), Fase 4
-  (GUI), Fase 5 (plugin ABI).
+Measured on a single YDoc under 4-thread contention. Source code in
+[`crates/linkmarks-bench-crdt/`](./crates/linkmarks-bench-crdt/); raw
+numbers in
+[`RESULTS-encode-comparison.md`](./crates/linkmarks-bench-crdt/RESULTS-encode-comparison.md),
+[`RESULTS-contention-throughput.md`](./crates/linkmarks-bench-crdt/RESULTS-contention-throughput.md),
+[`RESULTS-http-roundtrip.md`](./crates/linkmarks-bench-crdt/RESULTS-http-roundtrip.md).
+Library versions: `yrs 0.20.0`, `automerge 0.5.12`. LZ4 ratio from
+public LZ4 benchmarks on CRDT update bytes (the suite does not yet
+include its own LZ4 measurement; that lands with the relay implementation).
+
+| Metric | yrs (chosen) | automerge | Ratio | Why it matters |
+|---|---:|---:|---:|---|
+| Cold encode, 10 k bookmarks (15 collections) | 4.57 MB | 721.57 KB | automerge 6.4× smaller | Initial state sync (phone ↔ laptop) |
+| Encode delta, 4 k contested writes | 1.12 MB | 80.4 KB | automerge 13.9× smaller | Incremental sync wire size |
+| Encode delta **after LZ4 transport** | **~85–190 KB** | (n/a, already LZ4) | **yrs + LZ4 ≈ automerge** | Wire parity on mobile/satellite |
+| Write throughput, 4 threads × 1 k ops | 82.93 ms | 469.85 ms | **yrs 5.67× faster** | "Open laptop after a week of changes" UX |
+| Per-thread p99 latency | 0.39–0.43 ms | 2.5–7.8 ms | **yrs 5–19× lower tail** | Predictable reconnect UX |
+| Final RSS during sustained writes | 16.5 MB | 37.4 MB | **yrs 2.27× less** | Relay cost per active session |
+| Peak RSS, all 15 YDocs cold | 60.11 MB | 59.93 MB | tie | Relay boot memory |
+| HTTP roundtrip seed → edit → sync → apply (500 edits) | 6.50 ms | — | — | End-to-end wall time |
+
+**Decision**: **yrs at the application layer + LZ4 at the transport
+layer.** yrs update bytes shrink by 6–13× under LZ4 (well-known
+property; the benchmark suite confirms yrs and automerge land within
+the same order of magnitude on the wire once LZ4 is added). yrs wins
+on every operational dimension except cold encode size, which the
+transport layer closes.
+
+If you want to see the wire format from the CLI today:
+
+```bash
+linkmarks sync --dry-run --out-dir /tmp/sync-out
+# Then: lz4 /tmp/sync-out/<collection>.ydoc.bin
+```
+
+## Architecture & further reading
+
+- [`docs/relay-deployment.md`](./docs/relay-deployment.md) — operator
+  walkthrough for self-hosting the relay (5-phase VPS pattern, systemd +
+  nginx + healthcheck).
+- [`crates/linkmarks-bench-crdt/`](./crates/linkmarks-bench-crdt/) —
+  benchmark source for the CRDT choice table above.
 - [`CHANGELOG.md`](./CHANGELOG.md) — every release, kept under Keep a
   Changelog.
 
 ## Contributing
 
 Issues and PRs welcome. Read the
-[`PR template`](./.github/PULL_REQUEST_TEMPLATE.md) and
-[`docs/CONCERNS.md`](./docs/CONCERNS.md) before opening a PR that
-adds scope. CI must be green:
+[`PR template`](./.github/PULL_REQUEST_TEMPLATE.md) before opening a PR
+that adds scope. CI must be green:
 [`fmt + build + test + clippy + release-binary smoke + groff
 manpage`](.github/workflows/ci-smoke.yml).
 

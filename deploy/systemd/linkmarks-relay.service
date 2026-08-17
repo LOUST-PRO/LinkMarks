@@ -1,0 +1,39 @@
+[Unit]
+Description=LinkMarks CRDT sync relay (yrs + LZ4 transport)
+Documentation=https://github.com/LOUST-PRO/LinkMarks/blob/main/docs/relay-deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=linkmarks
+Group=linkmarks
+WorkingDirectory=/var/lib/linkmarks
+
+Environment="LINKMARKS_RELAY_BIND=127.0.0.1:8080"
+Environment="LINKMARKS_RELAY_DATA_DIR=/var/lib/linkmarks"
+Environment="LINKMARKS_RELAY_API_KEY_FILE=/etc/linkmarks/api.key"
+Environment="LINKMARKS_RELAY_SNAPSHOT_DIR=/var/lib/linkmarks/snapshots"
+Environment="LINKMARKS_RELAY_TOMBSTONE_RETENTION_DAYS=90"
+Environment="RUST_LOG=linkmarks_relay=warn,info"
+
+ExecStart=/usr/local/bin/linkmarks-relay
+Restart=always
+RestartSec=10
+
+# cgroup caps: the relay stores yrs state per active session; 512 MiB
+# caps memory growth from a malformed client write.
+MemoryMax=512M
+MemoryHigh=384M
+TasksMax=4096
+
+# Hardening (systemd security directives).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=/var/lib/linkmarks
+ReadWritePaths=/var/log/linkmarks
+
+[Install]
+WantedBy=multi-user.target

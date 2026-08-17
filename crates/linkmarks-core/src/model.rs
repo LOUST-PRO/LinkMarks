@@ -1,8 +1,8 @@
 //! Domain model for LinkMarks.
 //!
-//! Invariants (per `docs/ARCHITECTURE.md`):
+//! Invariants:
 //! - `original_url` is **never** rewritten. Round-trip fidelity.
-//! - `canonical_url` is the dedupe key, normalized per ADR-0001.
+//! - `canonical_url` is the dedupe key, normalized by `canonical`.
 //! - `tags` are sorted, lowercase, deduplicated at the model boundary.
 //! - `collection` is a `/`-separated folder path, normalized.
 //! - Timestamps are UTC ISO 8601.
@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Opaque bookmark identifier. ULID by default; may be locally generated
-/// UUIDs in v0. Server-assigned in CRDT mode (Fase 3+).
+/// UUIDs in v0. Server-assigned in CRDT mode.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BookmarkId(pub String);
@@ -87,13 +87,13 @@ pub struct SourceRef {
 pub enum SourceKind {
     /// Chromium-family browser JSON (Chrome, Brave, Edge, Arc, Vivaldi, Opera).
     Chromium,
-    /// Firefox places.sqlite + jsonlz4 backups (Fase 2).
+    /// Firefox places.sqlite + jsonlz4 backups.
     Firefox,
     /// Netscape HTML interchange format.
     Netscape,
-    /// Pinboard REST API (Fase 2+).
+    /// Pinboard REST API.
     Pinboard,
-    /// Linkwarden REST API (Fase 2+).
+    /// Linkwarden REST API.
     Linkwarden,
     /// Manually entered by a user.
     Manual,

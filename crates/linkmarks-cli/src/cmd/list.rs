@@ -1,8 +1,8 @@
 //! `linkmarks list` — list bookmarks deterministically.
 //!
 //! Default source order:
-//! 1. `--source=store` (Fase 2): read from the local SQLite store.
-//! 2. `--source=chrome` (Fase 1 legacy): parse a Chromium JSON file.
+//! 1. `--source=store`: read from the local SQLite store.
+//! 2. `--source=chrome`: parse a Chromium JSON file.
 //!
 //! `--source` is optional. When omitted, the store is used if the DB
 //! exists; otherwise we fall back to the OS-typical Chrome path so the
@@ -74,9 +74,8 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
     }
 }
 
-/// Decide the default source label: `store` if the DB exists, `chrome`
-/// otherwise. The Fase-1 default was `chrome`; Fase-2 defaults to the
-/// store once it has been initialized.
+/// Decide the default source label: `store` if the DB exists,
+/// `chrome` otherwise. The store is preferred once `init` has run.
 fn default_source_label(store_path: &std::path::Path) -> &'static str {
     if store_path.exists() {
         "store"

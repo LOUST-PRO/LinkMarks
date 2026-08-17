@@ -112,7 +112,7 @@ fn host_case_is_lowercased_in_storage() {
 // This test asserts the contract by loading the same file twice via
 // independent `Store`-equivalent invocations and confirming the second
 // read sees what the first read wrote to disk. It does NOT exercise a
-// live-reload signal (none exists in Fase 2).
+// live-reload signal (none exists today).
 #[test]
 fn config_single_read_per_process() {
     let dir = tempdir().unwrap();
@@ -129,7 +129,7 @@ fn config_single_read_per_process() {
     assert!(cfg1.is_preserved("x.com", "a"));
 
     // Rewrite the file on disk. A separate `load_from` invocation sees
-    // the change (this is the Fase-2 contract: single read per
+    // the change (this is the contract: single read per
     // process, callers decide when to re-read).
     fs::write(
         &path,

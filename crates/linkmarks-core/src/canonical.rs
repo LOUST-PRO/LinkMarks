@@ -1,9 +1,7 @@
 //! URL canonicalization for LinkMarks.
 //!
-//! Rules are documented in ADR-0001 (planned: `docs/decisions/0002-url-canonicalization.md`,
-//! v1.0.0 ships the implementation and the rules are recorded inline
-//! here until the ADR is drafted). The full ruleset lives in this
-//! module's doc-comment on `canonicalize`.
+//! The full ruleset lives in this module's doc-comment on
+//! `canonicalize`.
 //!
 //! Determinism: given the same input URL, `canonicalize` returns the
 //! same output bytes across runs, platforms, and processes. This is
@@ -27,7 +25,7 @@ pub enum CanonicalizeError {
 /// Tracking-parameter blocklist. Lowercased. Matched as a *prefix* for
 /// `utm_*` and `mc_*`, and as an *exact* match for the rest.
 ///
-/// Sources and rationale are documented in ADR 0002.
+/// Sources and rationale are documented in the project README.
 pub const TRACKING_PARAMS: &[&str] = &[
     "fbclid",
     "gclid",

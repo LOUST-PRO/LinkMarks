@@ -3,7 +3,7 @@
 //! Reads `${XDG_CONFIG_HOME:-~/.config}/linkmarks/config.toml` and parses
 //! it into a [`CanonicalConfig`]. The loader is **not** hot-reload:
 //! a single read per process is the contract. Hot-reload would require
-//! `notify` + state synchronization and is out of scope for Fase 2.
+//! `notify` + state synchronization and is out of scope today.
 //!
 //! ## Fallback policy
 //!

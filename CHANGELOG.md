@@ -98,8 +98,8 @@ Patch release — wiring + packaging + doc drift fixes for v2.1.0.
 
 ## [2.1.0] — 2026-08-15
 
-Minor release — F2.5 batch: fuzzy filter, sort modes, shell
-completions, packaging templates, README refresh.
+Minor release — fuzzy filter, sort modes, shell completions,
+packaging templates, README refresh.
 
 ### Added
 - **TUI fuzzy filter** — `crates/linkmarks-tui/src/filter.rs`
@@ -217,7 +217,7 @@ Patch release — Dependabot `rust-security` group bump + compat fixes.
 
 ## [2.0.0] — 2026-08-13
 
-Fase 2 batch — interactive TUI + Firefox import + SQLite store.
+Interactive TUI + Firefox import + SQLite store.
 
 ### Added
 - **`linkmarks-core`**: SQLite store (`rusqlite`, WAL mode, busy_timeout
@@ -251,7 +251,7 @@ Fase 2 batch — interactive TUI + Firefox import + SQLite store.
 
 ### Changed
 - **Workspace version bump 1.0.1 → 2.0.0** — major bump because
-  Fase 2 introduces a new persistence surface (SQLite store, was
+  v2.0 introduces a new persistence surface (SQLite store, was
   in-memory only at v1.0.x) and the new `tui` subcommand changes
   the CLI surface.
 - `linkmarks-cli` gains a `tui` subcommand (`crates/linkmarks-cli/src/cmd/tui.rs`).
@@ -272,39 +272,39 @@ Fase 2 batch — interactive TUI + Firefox import + SQLite store.
 - No Docker-only deploy.
 - No closed-source build.
 
-### Deferred (F2.5 follow-up)
+### Deferred
 - **Fuzzy filter via `nucleo`** — implementation present in working tree
   (`crates/linkmarks-tui/src/filter.rs`, sort.rs, filter_fuzzy_test.rs) on
   branch `chore/snapshot-2026-08-15-fuzz-foreign-wt` (0f5b6cc). Tracked
-  for the F2.5 PR alongside sort modes.
+  for the v2.1.2 PR alongside sort modes.
 - **Sort modes** — sort.rs preserved on the snapshot branch.
 - **Shell completions** — `clap_complete` + build script. Out of scope
-  per F5 PR body.
+  for this release.
 - **README Install / Subcommands / CI sections refresh** — original v1
   install instructions remain. Tracked for a separate docs pass.
 - **Debian / RPM / Arch / Homebrew packaging** — out of scope, follows
   in a future maintenance release once install.sh stabilizes.
-- **`cargo fmt --check` 56 hunks of pre-existing drift** — non-F5 drift,
-  to be batched with F2.5.
+- **`cargo fmt --check` 56 hunks of pre-existing drift** — to be batched
+  with the next minor release.
 
-### Planned (see ROADMAP.md)
-- Fase 3: CRDT sync server (spike `yrs` vs `automerge-rs` first), opt-in
-  `linkmarks sync --server <url>`.
-- Fase 4: `linkmarks-gui` (Dioxus desktop).
-- Fase 5: Plugin market with stable ABI + signed binaries.
+### Planned
+- Optional relay: CRDT sync server (`yrs` vs `automerge-rs` first),
+  opt-in `linkmarks sync --server <url>`.
+- Optional desktop GUI (Dioxus).
+- Plugin market with stable ABI + signed binaries.
 
 ## [1.0.1] — 2026-08-03
 
 ### Changed
 - **Tracking-param blocklist expanded** — added `mc_eid`, `mc_cid`,
   `igshid`, `ref_src` to the canonical-URL stripping set (was 5 → 9
-  params). Documented in `docs/decisions/0004-tracking-params.md`.
+  params).
 - **SQLite WAL storage** — `linkmarks-core` storage layer now uses
   WAL journal mode + `busy_timeout=5000` for concurrent reader/writer
   safety. Migration is idempotent (`PRAGMA journal_mode=WAL` re-issued
   on every connection).
-- **3 ADRs added** — `0002-dioxus-for-gui.md`,
-  `0003-sqlite-as-store.md`, `0004-tracking-params.md`.
+- **3 ADRs added** — Dioxus GUI choice, SQLite-as-store, and the
+  tracking-param blocklist rationale.
 
 ## [1.0.0] — 2026-07-28
 
@@ -312,8 +312,8 @@ Fase 2 batch — interactive TUI + Firefox import + SQLite store.
 - Workspace skeleton: `linkmarks-core`, `linkmarks-cli`, `linkmarks-bridge-chromium`.
 - `linkmarks-core` with normalized `Bookmark`, `SourceRef`, `Collection`,
   `Tag` model and `BookmarkSource` / `BookmarkSink` traits.
-- URL canonicalization rules (ADR-0001) with tracking-param blocklist
-  (`utm_*`, `fbclid`, `gclid`, `ref`, `ref_src`, `mc_eid`, `mc_cid`).
+- URL canonicalization rules (with tracking-param blocklist
+  `utm_*`, `fbclid`, `gclid`, `ref`, `ref_src`, `mc_eid`, `mc_cid`).
 - Local deterministic dedupe by canonical URL with conflict report.
 - `linkmarks-cli` with `list`, `import`, `export`, `dedupe` subcommands
   and `table` / `json` / `yaml` output formats.
@@ -321,8 +321,7 @@ Fase 2 batch — interactive TUI + Firefox import + SQLite store.
   JSON (Chrome, Brave, Edge, Arc, Vivaldi, Opera).
 - Fixture corpus: 5-bookmark anonymized example at
   `crates/bridges/linkmarks-bridge-chromium/tests/fixtures/chrome-bookmarks.example.json`.
-- ADRs:
-  - `0001-licensing.md` — AGPLv3 + Commercial dual.
+- Licensing decision: AGPLv3 + Commercial dual.
 - Exit codes: 0 OK, 1 partial, 2 invalid args, 3 dedupe conflicts.
 
 ### Anti-features (locked)
@@ -332,10 +331,10 @@ Fase 2 batch — interactive TUI + Firefox import + SQLite store.
 - No Docker-only deploy.
 - No closed-source build.
 
-### Planned (see ROADMAP.md)
-- Fase 2: `linkmarks-tui` (ratatui), `linkmarks-bridge-firefox`,
-  multi-source import.
-- Fase 3: CRDT sync server (`yrs` vs `automerge-rs` spike first),
+### Planned
+- `linkmarks-tui` (ratatui), `linkmarks-bridge-firefox`, multi-source
+  import.
+- CRDT sync server (`yrs` vs `automerge-rs` spike first),
   `linkmarks sync --server <url>`.
-- Fase 4: `linkmarks-gui` (Dioxus desktop).
-- Fase 5: Plugin market with stable ABI and signed binaries.
+- Desktop GUI (Dioxus).
+- Plugin market with stable ABI and signed binaries.

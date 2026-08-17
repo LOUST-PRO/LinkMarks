@@ -1,4 +1,4 @@
-# LinkMarks CI smoke (Fase 2 F5)
+# LinkMarks CI smoke
 #
 # Triggers: pushes to feature branches and main; PRs to main.
 # Goals:

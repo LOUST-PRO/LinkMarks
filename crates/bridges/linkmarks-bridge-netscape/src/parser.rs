@@ -39,13 +39,12 @@
 //! ## Folder flattening (v1)
 //!
 //! Nested `<DT><H3>` folders are **flattened** into synthetic
-//! `#folder/<name>` tags on each contained bookmark. This avoids
-//! introducing a first-class `Collection` (still a stub as of
-//! Fase 2 F1). The folder path is also preserved on
-//! `Bookmark::collection` for human display. A proper `Collection`
-//! materialization is scheduled post-Fase-2. Round-trip identity is
-//! preserved for canonical URLs and titles; folder tags and the
-//! `collection` string may shuffle order.
+//! `#folder/<name>` tags on each contained bookmark. The folder
+//! path is also preserved on `Bookmark::collection` for human
+//! display. A proper `Collection` materialization is scheduled
+//! for a future release. Round-trip identity is preserved for
+//! canonical URLs and titles; folder tags and the `collection`
+//! string may shuffle order.
 //!
 //! ## Errors
 //!

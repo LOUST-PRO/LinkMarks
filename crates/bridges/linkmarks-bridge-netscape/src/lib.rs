@@ -27,12 +27,11 @@
 //!
 //! Netscape `<DT><H3>` folder headings are flattened into
 //! synthetic `#folder/<name>` tags on each contained bookmark.
-//! This avoids adding a first-class `Collection` field on the
-//! model (collections are stubbed as of Fase 2 F1) while still
-//! preserving the user's organization as tags. A follow-up
-//! after the Collection model is introduced will preserve nested
-//! folders as proper `Collection` records. See the `parser` and
-//! `sink` module docs for the write-back convention.
+//! This preserves the user's folder organization as tags without
+//! requiring a first-class collection field on the model. A
+//! follow-up after the Collection model is introduced will preserve
+//! nested folders as proper `Collection` records. See the
+//! `parser` and `sink` module docs for the write-back convention.
 //!
 //! See [`NetscapeSource`] for the read side and [`NetscapeSink`]
 //! for the write side.

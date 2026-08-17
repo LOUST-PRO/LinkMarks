@@ -1,10 +1,10 @@
 //! `linkmarks dedupe` — local deterministic dedupe by canonical URL.
 //!
-//! Reads the live store by default (Fase 2) and runs the core dedupe
-//! algorithm over the rows. `--source=chrome` retains the Fase-1
-//! behaviour (parse a Chromium JSON file). `--apply` re-writes the
-//! store with the canonical set: archived tombstones are left intact
-//! and the winning record is upserted.
+//! Reads the live store by default and runs the core dedupe algorithm
+//! over the rows. `--source=chrome` parses a Chromium JSON file
+//! instead. `--apply` re-writes the store with the canonical set:
+//! archived tombstones are left intact and the winning record is
+//! upserted.
 
 use crate::Paths;
 use anyhow::{bail, Result};
@@ -50,8 +50,7 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
             }
             let s = store::open(&paths.store)?;
             let mut all = Vec::new();
-            // Phase-2 store has small row counts; page through with a
-            // conservative limit until empty.
+            // Page through the store with a conservative limit until empty.
             let mut offset = 0usize;
             loop {
                 let page = s.list(500, offset)?;
@@ -131,11 +130,11 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
         );
     } else {
         eprintln!(
-            "(apply mode: {} canonical records; Fase-1 chrome source has no on-disk write)",
+            "(apply mode: {} canonical records; chrome source has no on-disk write)",
             canonical.len()
         );
     }
-    let _ = args.refresh_canonical; // reserved for Fase 3+
+    let _ = args.refresh_canonical; // reserved for a future canonical-refresh pass
 
     if report.conflicts.is_empty() {
         Ok(crate::exit_codes::OK)

@@ -23,3 +23,12 @@ Thumbs.db
 .linkmarks/
 *.linkmarks
 tests/fixtures/_private/
+
+# Internal scaffolding / decision docs (live in
+# ~/Proyectos/Labs/LinkMarks-internal/ for the maintainer; the public repo
+# only carries consumer-facing docs: man/ + relay-deployment.md)
+docs/ARCHITECTURE.md
+docs/CONCERNS.md
+docs/ROADMAP.md
+docs/SPEC.md
+docs/decisions/

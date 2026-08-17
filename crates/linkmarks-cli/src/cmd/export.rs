@@ -1,8 +1,8 @@
 //! `linkmarks export` — export bookmarks to a sink format.
 //!
 //! Default source order:
-//! 1. `--source=store` (Fase 2): read from the local SQLite store.
-//! 2. `--source=chrome` (Fase 1 legacy): parse a Chromium JSON file.
+//! 1. `--source=store`: read from the local SQLite store (default).
+//! 2. `--source=chrome`: parse a Chromium JSON file.
 //!
 //! Sink formats: `netscape` (HTML) and `json` (NDJSON, one
 //! `Bookmark` per line). `--output=-` writes to stdout; any other
@@ -22,8 +22,8 @@ pub struct ExportArgs {
     #[arg(long, default_value = "netscape")]
     pub format: String,
 
-    /// Source to export from. `store` reads the SQLite store (Fase 2
-    /// default); `chrome` parses a Chromium JSON file.
+    /// Source to export from. `store` reads the SQLite store
+    /// (default); `chrome` parses a Chromium JSON file.
     #[arg(long, default_value = "store")]
     pub source: String,
 

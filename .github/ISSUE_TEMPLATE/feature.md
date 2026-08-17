@@ -12,17 +12,16 @@ assignees: ""
 
 ## Why
 
-<!-- What problem does this solve? Which persona does it serve?
-     Reference SPEC.md or ROADMAP.md. -->
+<!-- What problem does this solve? Which persona does it serve? -->
 
-## Phase
+## Scope
 
-<!-- Is this Fase 1, 2, 3, 4, or 5? If "none of the above", this
-     belongs in CONCERNS.md first. -->
+<!-- Which area does this touch? (CLI / TUI / bridge / store /
+     relay / docs). If unclear, discuss in a tracking issue first. -->
 
 ## Anti-feature check
 
-<!-- Does this conflict with any anti-feature in SPEC.md?
+<!-- Does this conflict with any documented anti-feature?
      (no telemetry, no AI-without-cost-gate, no Docker-only, etc.) -->
 
 ## Acceptance criteria

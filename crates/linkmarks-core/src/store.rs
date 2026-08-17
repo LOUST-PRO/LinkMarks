@@ -21,7 +21,7 @@
 //! the epoch 0 on read.
 //! `Bookmark.source.raw` ↔ `bookmarks.raw` (JSON string).
 //! `tags` ↔ `tags` table (one row per `(bookmark_id, tag)`).
-//! `content_type` is not persisted in Fase 2; bridges that set it
+//! `content_type` is not persisted today; bridges that set it
 //! currently do so to `None`.
 
 use crate::errors::CoreError;
@@ -264,7 +264,7 @@ impl Store {
                     b.description,
                     b.collection,
                     b.source.kind.as_cli_str(),
-                    Option::<String>::None, // source_id — unused in Fase 1
+                    Option::<String>::None, // source_id — unused; bridged via SourceRef.external_id
                     b.source.external_id,
                     added_at,
                     last_seen,
@@ -374,7 +374,7 @@ fn row_to_bookmark(row: &Row<'_>) -> rusqlite::Result<Bookmark> {
         created_at: epoch_to_utc(added_at),
         updated_at: epoch_to_utc(last_seen_at),
         source,
-        content_type: None, // not persisted in Fase 2 schema
+        content_type: None, // not persisted in the current schema
         archived: archived != 0,
     })
 }

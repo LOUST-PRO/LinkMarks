@@ -19,7 +19,7 @@ pub enum SourceSelection {
     Chrome,
     /// Netscape-format HTML bookmark files.
     Netscape,
-    /// Firefox places.sqlite (Fase 2 F3).
+    /// Firefox places.sqlite.
     Firefox,
 }
 

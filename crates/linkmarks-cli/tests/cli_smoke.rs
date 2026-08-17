@@ -95,8 +95,8 @@ fn dedupe_smoke_exits_zero_or_three() {
     );
 }
 
-// New Fase-2 smoke tests (store-backed flows). Each test uses a fresh
-// tempdir for the store + config so the suite is hermetic.
+// Store-backed smoke tests. Each test uses a fresh tempdir for the
+// store + config so the suite is hermetic.
 
 fn linkmarks_bin_with_env(dir: &std::path::Path) -> Command {
     let mut cmd = linkmarks_bin();

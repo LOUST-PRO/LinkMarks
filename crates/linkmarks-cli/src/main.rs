@@ -1,12 +1,12 @@
 //! `linkmarks` — the LinkMarks command-line interface.
 //!
 //! Subcommands:
-//! - `init`        — initialize the XDG store + config (Fase 2).
+//! - `init`        — initialize the XDG store + config.
 //! - `list`        — list bookmarks deterministically.
 //! - `import`      — import from a bridge source.
 //! - `export`      — export to a sink format.
 //! - `dedupe`      — local deterministic dedupe by canonical URL.
-//! - `tui`         — launch the interactive terminal browser (Fase 2 F4).
+//! - `tui`         — launch the interactive terminal browser.
 //! - `completions` — emit a shell completion script (bash/zsh/fish/powershell/elvish).
 
 use anyhow::{Context, Result};
@@ -98,6 +98,8 @@ enum Commands {
     Dedupe(cmd::dedupe::DedupeArgs),
     /// Launch the interactive terminal browser.
     Tui(cmd::tui::TuiArgs),
+    /// Multi-device sync (preview: dry-run only).
+    Sync(cmd::sync::SyncArgs),
     /// Emit a shell completion script to stdout.
     Completions(cmd::completions::CompletionsArgs),
 }
@@ -137,6 +139,7 @@ fn dispatch(cli: Cli, paths: Paths) -> Result<i32> {
         Commands::Export(args) => cmd::export::run(args, cli.format, paths),
         Commands::Dedupe(args) => cmd::dedupe::run(args, cli.format, paths),
         Commands::Tui(args) => cmd::tui::execute(args, paths),
+        Commands::Sync(args) => cmd::sync::run(args, cli.format, paths),
         Commands::Completions(args) => cmd::completions::run(args, paths),
     }
 }

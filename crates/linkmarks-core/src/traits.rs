@@ -1,7 +1,7 @@
 //! Source/sink traits.
 //!
 //! Bridges implement these. The CLI orchestrates them via
-//! `SourceRegistry` (CLI crate). Plugins (Fase 5) implement the same
+//! `SourceRegistry` (CLI crate). Plugins implement the same
 //! traits via `libloading`.
 
 use crate::errors::CoreError;
