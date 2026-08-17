@@ -1388,7 +1388,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-chromium"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "chrono",
  "linkmarks-core",
@@ -1401,7 +1401,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-firefox"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "chrono",
  "linkmarks-core",
@@ -1416,7 +1416,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-netscape"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "chrono",
  "linkmarks-core",
@@ -1430,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-cli"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1451,7 +1451,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-core"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "chrono",
  "dirs",
@@ -1468,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-tui"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "anyhow",
  "chrono",
