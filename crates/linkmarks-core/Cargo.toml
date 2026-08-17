@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Core domain model, traits, URL canonicalization, and local dedupe for LinkMarks."
+publish = false
 
 [dependencies]
 serde.workspace = true

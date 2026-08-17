@@ -18,12 +18,14 @@ fn fixture_path() -> PathBuf {
 
 fn linkmarks_bin() -> Command {
     // We use `cargo run` so the workspace rebuilds the CLI on demand.
-    // For a tighter loop in CI, swap to the release binary.
+    // The binary now lives in the `linkmarks` umbrella crate (the
+    // single binary target for the workspace); `linkmarks-cli` is
+    // lib-only.
     let mut cmd = Command::new(env!("CARGO"));
     cmd.arg("run")
         .arg("--quiet")
         .arg("-p")
-        .arg("linkmarks-cli")
+        .arg("linkmarks")
         .arg("--")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

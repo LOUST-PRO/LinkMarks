@@ -1,0 +1,28 @@
+[package]
+name = "linkmarks"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "AGPL-3.0-or-later"
+authors.workspace = true
+description = "Local-first, AGPL-licensed bookmark manager. CLI + interactive TUI for collecting, deduplicating, and exporting browser bookmarks offline. Works against a single SQLite store under ~/.local/share/linkmarks."
+repository = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://github.com/LOUST-PRO/LinkMarks"
+keywords = ["bookmarks", "self-hosted", "local-first", "crdt", "rust"]
+categories = ["command-line-utilities", "database", "web"]
+readme = "README.md"
+
+[[bin]]
+name = "linkmarks"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+linkmarks-core = { path = "../linkmarks-core", version = "2.2.0" }
+linkmarks-cli = { path = "../linkmarks-cli", version = "2.2.0" }
+linkmarks-tui = { path = "../linkmarks-tui", version = "2.2.0" }
+linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.2.0" }
+linkmarks-bridge-firefox = { path = "../bridges/linkmarks-bridge-firefox", version = "2.2.0" }
+linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape", version = "2.2.0" }

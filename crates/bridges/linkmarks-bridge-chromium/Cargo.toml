@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Bridge for Chromium-family Bookmarks JSON (Chrome, Brave, Edge, Arc, Vivaldi, Opera)."
+publish = false
 
 [dependencies]
 linkmarks-core = { path = "../../linkmarks-core", version = "2.1.2" }

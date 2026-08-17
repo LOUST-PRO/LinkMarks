@@ -6,10 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Command-line interface for LinkMarks."
-
-[[bin]]
-name = "linkmarks"
-path = "src/main.rs"
+publish = false
 
 [dependencies]
 linkmarks-core = { path = "../linkmarks-core", version = "2.1.2" }

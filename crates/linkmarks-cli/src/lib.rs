@@ -1,6 +1,12 @@
-//! `linkmarks` — the LinkMarks command-line interface.
+//! `linkmarks-cli` — the LinkMarks command-line interface.
 //!
-//! Subcommands:
+//! Re-exports the CLI parsing, XDG paths resolution, and command
+//! dispatch. The [`run`] function is the canonical entry point that
+//! binaries (both the workspace-local `linkmarks` bin and any future
+//! embedding crate — including the `linkmarks` umbrella) call.
+//!
+//! ## Subcommands
+//!
 //! - `init`        — initialize the XDG store + config.
 //! - `list`        — list bookmarks deterministically.
 //! - `import`      — import from a bridge source.
@@ -9,13 +15,13 @@
 //! - `tui`         — launch the interactive terminal browser.
 //! - `completions` — emit a shell completion script (bash/zsh/fish/powershell/elvish).
 
+pub mod cmd;
+pub mod ui;
+
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
-
-mod cmd;
-mod ui;
 
 #[derive(Parser, Debug)]
 #[command(name = "linkmarks", version, about = "Local-first bookmark manager")]
@@ -41,7 +47,7 @@ pub struct Cli {
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum Format {
+pub enum Format {
     #[default]
     Table,
     Json,
@@ -114,12 +120,16 @@ pub fn build_cli() -> clap::Command {
     Cli::command()
 }
 
-fn main() -> Result<()> {
+/// Run the LinkMarks CLI.
+///
+/// Returns the process exit code (see [`exit_codes`]). The caller
+/// (typically a 3-line `main` wrapper) is responsible for translating
+/// that into `std::process::exit`.
+pub fn run() -> Result<i32> {
     init_tracing();
     let cli = Cli::parse();
     let paths = Paths::resolve(&cli);
-    let exit = dispatch(cli, paths).context("linkmarks command failed")?;
-    std::process::exit(exit);
+    dispatch(cli, paths).context("linkmarks command failed")
 }
 
 fn init_tracing() {

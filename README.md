@@ -72,14 +72,18 @@ LATEST=$(curl -sSL https://api.github.com/repos/LOUST-PRO/LinkMarks/releases/lat
 curl -sSL "https://github.com/LOUST-PRO/LinkMarks/releases/download/${LATEST}/linkmarks-${LATEST}-x86_64-unknown-linux-gnu.tar.xz" \
   | tar -xJ --strip-components=1 -C ~/.local/bin linkmarks-x86_64-unknown-linux-gnu/linkmarks
 
-# 2) cargo install — pulls the same source from crates.io / git.
-#    The `--path` flag is required for a workspace: the `linkmarks`
-#    binary lives in `crates/linkmarks-cli`. `--locked` pins the
-#    build to the shipped Cargo.lock so feature resolution matches
-#    CI exactly.
+# 2) cargo install from crates.io — simplest path once v2.2 ships.
+#    The `linkmarks` umbrella exposes a `linkmarks` binary directly,
+#    so a single `cargo install` lands the CLI in ~/.cargo/bin/.
+cargo install linkmarks --locked
+
+# 2b) cargo install --git — same source from a tag/branch. The umbrella
+#     crate lives at `crates/linkmarks`, so `--path` points there. `--locked`
+#     pins the build to the shipped Cargo.lock so feature resolution
+#     matches CI exactly.
 cargo install --git https://github.com/LOUST-PRO/LinkMarks \
-  --tag v2.1.1 \
-  --path crates/linkmarks-cli \
+  --tag v2.2.0 \
+  --path crates/linkmarks \
   --bin linkmarks \
   --locked
 

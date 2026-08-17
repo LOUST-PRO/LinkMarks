@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Interactive terminal browser for the local LinkMarks store (ratatui + crossterm)."
+publish = false
 
 [dependencies]
 linkmarks-core = { path = "../linkmarks-core", version = "2.1.2" }
