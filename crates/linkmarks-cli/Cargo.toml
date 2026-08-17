@@ -13,8 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 linkmarks-core.workspace = true
-linkmarks-tui = { path = "../linkmarks-tui" }
-linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
+linkmarks-tui = { path = "../linkmarks-tui", version = "2.1.2" }
+linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.1.2" }
 clap.workspace = true
 clap_complete.workspace = true
 anyhow.workspace = true

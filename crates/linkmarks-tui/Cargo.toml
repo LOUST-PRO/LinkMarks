@@ -8,9 +8,9 @@ authors.workspace = true
 description = "Interactive terminal browser for the local LinkMarks store (ratatui + crossterm)."
 
 [dependencies]
-linkmarks-core = { path = "../linkmarks-core" }
-linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium" }
-linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape" }
+linkmarks-core = { path = "../linkmarks-core", version = "2.1.2" }
+linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.1.2" }
+linkmarks-bridge-netscape = { path = "../bridges/linkmarks-bridge-netscape", version = "2.1.2" }
 ratatui = "0.30"
 crossterm = "0.29"
 nucleo = "0.5"
