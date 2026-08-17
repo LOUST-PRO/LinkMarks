@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Bridge for Firefox places.sqlite (live profile, read-only) and jsonlz4 bookmark backups (browser-closed snapshots)."
 
 [dependencies]
-linkmarks-core = { path = "../../linkmarks-core" }
+linkmarks-core = { path = "../../linkmarks-core", version = "2.1.2" }
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true

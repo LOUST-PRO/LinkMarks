@@ -8,7 +8,7 @@ authors.workspace = true
 description = "Bridge for Chromium-family Bookmarks JSON (Chrome, Brave, Edge, Arc, Vivaldi, Opera)."
 
 [dependencies]
-linkmarks-core = { path = "../../linkmarks-core" }
+linkmarks-core = { path = "../../linkmarks-core", version = "2.1.2" }
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
