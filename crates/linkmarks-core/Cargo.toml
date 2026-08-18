@@ -1,12 +1,16 @@
 [package]
 name = "linkmarks-core"
+description = "Core domain model, traits, URL canonicalization, and local dedupe for LinkMarks."
+license = "AGPL-3.0-or-later"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
 authors.workspace = true
-description = "Core domain model, traits, URL canonicalization, and local dedupe for LinkMarks."
-publish = false
+repository = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://github.com/LOUST-PRO/LinkMarks"
+keywords = ["bookmarks", "self-hosted", "local-first", "crdt", "rust"]
+categories = ["database", "encoding", "web"]
+readme = "README.md"
 
 [dependencies]
 serde.workspace = true

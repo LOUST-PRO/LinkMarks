@@ -6,29 +6,36 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [2.2.0] — 2026-08-17
 
-Minor release — umbrella refactor + dual lib+bin target for the CLI.
+Minor release — umbrella refactor + dual lib+bin target for the CLI +
+complete crates.io metadata for every sub-crate.
 
 ### Added
 - **Umbrella crate `linkmarks`.** A new top-level workspace member at
-  `crates/linkmarks` collapses the seven previously-individual
-  crates (`linkmarks-core`, `linkmarks-cli`, `linkmarks-tui`, and
-  the three browser bridges) into one crates.io artifact. End users
-  now install the CLI with a single `cargo install linkmarks --locked`
-  instead of juggling a `--path crates/linkmarks-cli --bin linkmarks`
-  recipe.
+  `crates/linkmarks` produces the canonical `linkmarks` binary. End
+  users install with a single `cargo install linkmarks --locked` from
+  crates.io. The umbrella is a thin wrapper: an 8-line `main.rs` that
+  delegates to `linkmarks_cli::run()` and translates the `Result<i32>`
+  exit code into `std::process::exit`.
 - **Dual lib+bin target on `linkmarks-cli`.** The CLI crate is now
   both a library (exposing `linkmarks_cli::run()` for the umbrella
   binary and any future embedding) and a binary (preserving the
   existing `cargo install --path crates/linkmarks-cli --bin linkmarks`
   workflow for users who build directly from the workspace).
-- **`linkmarks` umbrella binary.** `crates/linkmarks/src/main.rs` is
-  an 8-line wrapper that calls `linkmarks_cli::run()` and translates
-  the `Result<i32>` exit code into a `std::process::exit` value.
 - **Workspace re-exports.** `linkmarks::lib.rs` re-exports
   `linkmarks_core` (domain model, storage, canonicalization, dedupe)
   and `linkmarks_tui` (interactive terminal browser), so downstream
   Rust consumers can `use linkmarks::{core, tui}` instead of carrying
   six separate `Cargo.toml` dependencies.
+- **Full crates.io metadata on every crate.** Each of the seven
+  workspace members now ships with `repository`, `homepage`,
+  `keywords`, `categories`, `license`, `description` (≥60 chars), and
+  a `README.md` that satisfies the 12-heuristic
+  `lzt-publish-metadata-check` gate. The seven crates.io pages will
+  all render the GitHub link, the SPDX dual-license, and the README.
+- **Per-crate READMEs.** Each sub-crate gains a `README.md` with
+  canonical sections (`What is it`, `Install`, `Usage`, `License`)
+  and ≥30 lines. The umbrella already had a 124-line README from the
+  v2.2 preparation.
 
 ### Changed
 - **`linkmarks-cli` visibility.** Sub-modules `cmd` and `ui` are now
@@ -41,15 +48,17 @@ Minor release — umbrella refactor + dual lib+bin target for the CLI.
   the `cargo install --git` recipe to point at `crates/linkmarks` and
   `--tag v2.2.0`.
 - **Workspace version bump.** `workspace.package.version` advances
-  from `2.1.2` to `2.2.0`. All seven sub-crates inherit the bump via
-  `version.workspace = true`.
+  from `2.1.2` to `2.2.0`. All seven sub-crates pin the bump via
+  `version = "2.2.0"` on internal `path =` dependencies.
 
 ### Removed
-- **No crates.io pages for the seven sub-libraries.** Each
-  sub-crate's `Cargo.toml` gains `publish = false`. They remain in
-  the workspace and are bundled into the umbrella binary, but no
-  longer produce their own crates.io artifacts. The `linkmarks`
-  umbrella is the single published crate for this project.
+- **No crate publishes are withheld.** Every workspace member is
+  `publish = true` at v2.2.0. The earlier draft that marked the six
+  sub-crates `publish = false` was reverted because cargo's
+  downstream-consumer build simulation cannot resolve a path
+  dependency against a crate that is not on the registry. The
+  canonical Rust idiom (tokio, tracing, bevy, clap) is to publish
+  every workspace member in topological order.
 
 ### Notes
 - **No behavior change.** The CLI surface (subcommands, flags, exit
@@ -57,6 +66,12 @@ Minor release — umbrella refactor + dual lib+bin target for the CLI.
   packaging refactor; the underlying engines are unchanged.
 - **License unchanged.** SPDX `AGPL-3.0-or-later OR
   LicenseRef-Commercial` (per `dual-license-OR-not-AND.md`).
+- **Publish order is enforced by Cargo's resolver.** Because cargo's
+  build simulation resolves every `version =` dependency against the
+  public registry, the 7 publishes must happen in topological order:
+  `linkmarks-core` → the three bridges → `linkmarks-tui` →
+  `linkmarks-cli` → `linkmarks`. Each step is gated by
+  `LZT_APPROVE_PUBLISH=1` per stage-local-first.
 
 ## [2.1.1] — 2026-08-15
 

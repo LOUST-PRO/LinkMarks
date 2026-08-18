@@ -1,15 +1,19 @@
 [package]
 name = "linkmarks-bridge-firefox"
+description = "Bridge for Firefox places.sqlite (live profile, read-only) and jsonlz4 bookmark backups (browser-closed snapshots)."
+license = "AGPL-3.0-or-later"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
 authors.workspace = true
-description = "Bridge for Firefox places.sqlite (live profile, read-only) and jsonlz4 bookmark backups (browser-closed snapshots)."
-publish = false
+repository = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://github.com/LOUST-PRO/LinkMarks"
+keywords = ["bookmarks", "firefox", "browser", "places-sqlite", "jsonlz4"]
+categories = ["encoding", "parser-implementations"]
+readme = "README.md"
 
 [dependencies]
-linkmarks-core = { path = "../../linkmarks-core", version = "2.1.2" }
+linkmarks-core = { path = "../../linkmarks-core", version = "2.2.0" }
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true

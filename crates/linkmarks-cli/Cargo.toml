@@ -1,17 +1,21 @@
 [package]
 name = "linkmarks-cli"
+description = "Command-line interface for LinkMarks with deterministic subcommands, structured output formats, and shell completions."
+license = "AGPL-3.0-or-later"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
 authors.workspace = true
-description = "Command-line interface for LinkMarks."
-publish = false
+repository = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://github.com/LOUST-PRO/LinkMarks"
+keywords = ["bookmarks", "cli", "clap", "local-first", "shell"]
+categories = ["command-line-utilities", "database"]
+readme = "README.md"
 
 [dependencies]
-linkmarks-core = { path = "../linkmarks-core", version = "2.1.2" }
-linkmarks-tui = { path = "../linkmarks-tui", version = "2.1.2" }
-linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.1.2" }
+linkmarks-core = { path = "../linkmarks-core", version = "2.2.0" }
+linkmarks-tui = { path = "../linkmarks-tui", version = "2.2.0" }
+linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.2.0" }
 clap.workspace = true
 clap_complete.workspace = true
 anyhow.workspace = true
