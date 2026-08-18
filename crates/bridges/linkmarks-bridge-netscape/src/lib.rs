@@ -1,6 +1,8 @@
 //! # linkmarks-bridge-netscape
 //!
-//! Implements [`BookmarkSource`] and [`BookmarkSink`] for the
+//! Implements
+//! [`BookmarkSource`](linkmarks_core::BookmarkSource) and
+//! [`BookmarkSink`](linkmarks_core::BookmarkSink) for the
 //! standard Netscape bookmark HTML format
 //! (`<!DOCTYPE NETSCAPE-Bookmark-file-1>`).
 //!

@@ -4,7 +4,7 @@
 //! 1. Open the source (Chromium JSON in v1).
 //! 2. Read bookmarks via `BookmarkSource::list()`.
 //! 3. Canonicalize each URL through the loader-supplied
-//!    [`CanonicalConfig`] (see `linkmarks_core::config`).
+//!    [`CanonicalConfig`](linkmarks_core::CanonicalConfig).
 //! 4. Upsert into the local store.
 //!
 //! `--dry-run` parses and canonicalizes but does not write the store.
