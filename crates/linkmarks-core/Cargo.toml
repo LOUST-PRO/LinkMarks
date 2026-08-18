@@ -9,7 +9,7 @@ authors.workspace = true
 repository = "https://github.com/LOUST-PRO/LinkMarks"
 homepage = "https://github.com/LOUST-PRO/LinkMarks"
 keywords = ["bookmarks", "self-hosted", "local-first", "crdt", "rust"]
-categories = ["database", "encoding", "web"]
+categories = ["database", "data-structures", "encoding"]
 readme = "README.md"
 
 [dependencies]

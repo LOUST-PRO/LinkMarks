@@ -9,7 +9,7 @@ description = "Local-first, AGPL-licensed bookmark manager. CLI + interactive TU
 repository = "https://github.com/LOUST-PRO/LinkMarks"
 homepage = "https://github.com/LOUST-PRO/LinkMarks"
 keywords = ["bookmarks", "self-hosted", "local-first", "crdt", "rust"]
-categories = ["command-line-utilities", "database", "web"]
+categories = ["command-line-utilities", "database"]
 readme = "README.md"
 
 [[bin]]
