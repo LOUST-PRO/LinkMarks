@@ -7,15 +7,15 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository = "https://github.com/LOUST-PRO/LinkMarks"
-homepage = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://loust-pro.github.io/LinkMarks/"
 keywords = ["bookmarks", "cli", "clap", "local-first", "shell"]
 categories = ["command-line-utilities", "database"]
 readme = "README.md"
 
 [dependencies]
-linkmarks-core = { path = "../linkmarks-core", version = "2.2.0" }
-linkmarks-tui = { path = "../linkmarks-tui", version = "2.2.0" }
-linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.2.0" }
+linkmarks-core = { path = "../linkmarks-core", version = "2.2.1" }
+linkmarks-tui = { path = "../linkmarks-tui", version = "2.2.1" }
+linkmarks-bridge-chromium = { path = "../bridges/linkmarks-bridge-chromium", version = "2.2.1" }
 clap.workspace = true
 clap_complete.workspace = true
 anyhow.workspace = true

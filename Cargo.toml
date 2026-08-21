@@ -12,15 +12,15 @@ members = [
 ]
 
 [workspace.package]
-version = "2.2.0"
+version = "2.2.1"
 edition = "2021"
 rust-version = "1.78"
 license = "AGPL-3.0-or-later"
 authors = ["David Alejandro Mireles Llamas"]
-homepage = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://loust-pro.github.io/LinkMarks/"
 repository = "https://github.com/LOUST-PRO/LinkMarks"
 keywords = ["bookmarks", "self-hosted", "local-first", "crdt", "rust"]
-categories = ["command-line-utilities", "database", "web"]
+categories = ["command-line-utilities", "database"]
 description = "Local-first, AGPL-licensed bookmark manager. Imports what you have, dedupes deterministically, stays useful offline."
 
 [workspace.dependencies]

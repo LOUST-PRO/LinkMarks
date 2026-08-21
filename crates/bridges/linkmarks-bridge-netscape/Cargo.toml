@@ -7,13 +7,13 @@ edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository = "https://github.com/LOUST-PRO/LinkMarks"
-homepage = "https://github.com/LOUST-PRO/LinkMarks"
+homepage = "https://loust-pro.github.io/LinkMarks/"
 keywords = ["bookmarks", "netscape", "html", "export", "interchange"]
 categories = ["encoding", "parser-implementations"]
 readme = "README.md"
 
 [dependencies]
-linkmarks-core = { path = "../../linkmarks-core", version = "2.2.0" }
+linkmarks-core = { path = "../../linkmarks-core", version = "2.2.1" }
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
