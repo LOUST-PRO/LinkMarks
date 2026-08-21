@@ -2,7 +2,7 @@ name: Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, refactor/v2.2.0-umbrella]
     paths:
       - 'book/**'
       - '.github/workflows/pages.yml'
