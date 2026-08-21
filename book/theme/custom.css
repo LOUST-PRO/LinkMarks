@@ -1,0 +1,16 @@
+/* LinkMarks book — minimal overrides */
+
+/* Keep the body readable on wide screens */
+.content { max-width: 880px; }
+
+/* Tables: padded, not cramped */
+table { padding: 0.5rem 1rem; }
+table th, table td { padding: 0.4em 0.8em; }
+
+/* Code blocks: small font, no awkward wrapping */
+pre, code { font-size: 0.875em; }
+pre code { white-space: pre; }
+
+/* Header anchor: visible on hover, subtle by default */
+a.header-anchor { opacity: 0.4; transition: opacity 0.15s; }
+a.header-anchor:hover { opacity: 1.0; }
