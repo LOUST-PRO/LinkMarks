@@ -93,26 +93,23 @@ pub fn run(args: ExportArgs, _format: crate::Format, paths: Paths) -> Result<i32
             }
             all
         }
-        "chrome" | "firefox" | "netscape" | "html" => {
-            let kind = linkmarks_core::SourceKind::from_cli_str(args.source.as_str())
-                .ok_or_else(|| anyhow::anyhow!("unknown source '{}'", args.source))?;
+        other => {
+            // Path-source branch: resolve aliases (brave/vivaldi/edge/arc/opera
+            // collapse to Chromium) via `from_cli_str`, then validate the kind.
+            let kind = linkmarks_core::SourceKind::from_cli_str(other)
+                .ok_or_else(|| anyhow::anyhow!("unknown source '{other}'"))?;
             if !is_path_source(kind) {
                 bail!(
-                    "unsupported --source '{}' (try `store` or one of {:?})",
-                    args.source,
+                    "unsupported --source '{other}' (try `store` or one of {:?})",
                     PATH_SOURCE_KINDS
                 );
             }
             let path = args
                 .path
                 .clone()
-                .ok_or_else(|| anyhow::anyhow!("--path is required for --source={}", args.source))?;
+                .ok_or_else(|| anyhow::anyhow!("--path is required for --source={}", other))?;
             open_source(kind, &path)?
         }
-        other => bail!(
-            "unsupported --source '{other}' (try `store` or one of {:?})",
-            PATH_SOURCE_KINDS
-        ),
     };
 
     match format {
@@ -152,10 +149,7 @@ fn write_output(output: &std::path::Path, rendered: &str) -> Result<()> {
 /// `linkmarks-bridge-chromium`'s [`ChromiumSink`]. Atomic write if
 /// the output is a file; stdout is rejected because the sink needs
 /// a destination path.
-fn write_chromium(
-    output: &std::path::Path,
-    bookmarks: &[linkmarks_core::Bookmark],
-) -> Result<()> {
+fn write_chromium(output: &std::path::Path, bookmarks: &[linkmarks_core::Bookmark]) -> Result<()> {
     if output.as_os_str() == "-" {
         bail!(
             "--format=chrome requires a file path for --output (the sink writes atomically; \
@@ -212,12 +206,27 @@ mod tests {
 
     #[test]
     fn export_format_parses_known_strings() {
-        assert_eq!(ExportFormat::from_str("netscape").unwrap(), ExportFormat::Netscape);
-        assert_eq!(ExportFormat::from_str("html").unwrap(), ExportFormat::Netscape);
+        assert_eq!(
+            ExportFormat::from_str("netscape").unwrap(),
+            ExportFormat::Netscape
+        );
+        assert_eq!(
+            ExportFormat::from_str("html").unwrap(),
+            ExportFormat::Netscape
+        );
         assert_eq!(ExportFormat::from_str("json").unwrap(), ExportFormat::Json);
-        assert_eq!(ExportFormat::from_str("ndjson").unwrap(), ExportFormat::Json);
-        assert_eq!(ExportFormat::from_str("chrome").unwrap(), ExportFormat::Chrome);
-        assert_eq!(ExportFormat::from_str("chromium").unwrap(), ExportFormat::Chrome);
+        assert_eq!(
+            ExportFormat::from_str("ndjson").unwrap(),
+            ExportFormat::Json
+        );
+        assert_eq!(
+            ExportFormat::from_str("chrome").unwrap(),
+            ExportFormat::Chrome
+        );
+        assert_eq!(
+            ExportFormat::from_str("chromium").unwrap(),
+            ExportFormat::Chrome
+        );
     }
 
     #[test]

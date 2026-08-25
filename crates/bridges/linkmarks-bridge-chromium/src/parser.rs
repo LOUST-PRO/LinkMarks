@@ -20,10 +20,9 @@
 //! `ParseError::Partial` and the rest of the file is parsed.
 
 use chrono::{DateTime, TimeZone, Utc};
-use linkmarks_core::errors::CoreError;
-use linkmarks_core::model::{Bookmark, BookmarkId, SourceKind, SourceRef, Tag};
+use linkmarks_core::model::{Bookmark, BookmarkId, SourceKind, SourceRef};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::Path;
 use thiserror::Error;
 
@@ -188,9 +187,6 @@ fn build_bookmark(node: &BookmarkNode, collection: &str) -> Result<Bookmark, Par
     let created_at = parse_chromium_timestamp(node.date_added.as_deref()).unwrap_or_else(Utc::now);
     let updated_at = parse_chromium_timestamp(node.date_last_used.as_deref()).unwrap_or(created_at);
 
-    let tags_set: BTreeSet<String> = BTreeSet::new();
-    let _ = tags_set;
-
     Ok(Bookmark {
         id: BookmarkId::generate(),
         original_url: url.to_string(),
@@ -236,9 +232,7 @@ fn parse_chromium_timestamp(raw: Option<&str>) -> Option<DateTime<Utc>> {
 #[must_use]
 pub fn chromium_timestamp(dt: DateTime<Utc>) -> String {
     let unix_micros = dt.timestamp_micros();
-    let win_micros = unix_micros
-        .checked_add(11_644_473_600_000_000)
-        .unwrap_or(0);
+    let win_micros = unix_micros.checked_add(11_644_473_600_000_000).unwrap_or(0);
     win_micros.max(0).to_string()
 }
 
@@ -247,18 +241,6 @@ pub fn chromium_timestamp(dt: DateTime<Utc>) -> String {
 pub fn parse_and_flatten(path: &Path) -> Result<(Vec<Bookmark>, Vec<ParseError>), ParseError> {
     let parsed = parse_file(path)?;
     Ok(flatten(&parsed))
-}
-
-// Suppress unused warnings for the future-facing Tag import.
-#[allow(dead_code)]
-fn _tag_typecheck(t: Tag) -> String {
-    t.0
-}
-
-// Suppress unused CoreError import (re-exported through public API).
-#[allow(dead_code)]
-fn _ce_typecheck(e: CoreError) -> String {
-    format!("{e}")
 }
 
 #[cfg(test)]
