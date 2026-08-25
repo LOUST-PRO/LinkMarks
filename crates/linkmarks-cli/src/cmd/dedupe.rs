@@ -43,6 +43,10 @@ pub struct DedupeArgs {
 }
 
 pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32> {
+    // The CLI accepts Chromium-family aliases (`brave`, `vivaldi`,
+    // `edge`, `arc`, ...) that collapse to `SourceKind::Chromium` via
+    // `from_cli_str`. Normalize FIRST, then check whether the resolved
+    // kind is path-backed, so the alias list is exhaustive.
     let bookmarks = match args.source.as_str() {
         "store" => {
             if !paths.store.exists() {
@@ -69,7 +73,7 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
             }
             all
         }
-        "chrome" | "firefox" | "netscape" | "html" => {
+        _ => {
             let kind = linkmarks_core::SourceKind::from_cli_str(args.source.as_str())
                 .ok_or_else(|| anyhow::anyhow!("unknown source '{}'", args.source))?;
             if !is_path_source(kind) {
@@ -79,16 +83,11 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
                     PATH_SOURCE_KINDS
                 );
             }
-            let path = args
-                .path
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("--path is required for --source={}", args.source))?;
+            let path = args.path.clone().ok_or_else(|| {
+                anyhow::anyhow!("--path is required for --source={}", args.source)
+            })?;
             open_source(kind, &path)?
         }
-        other => bail!(
-            "unsupported --source '{other}' (try `store` or one of {:?})",
-            PATH_SOURCE_KINDS
-        ),
     };
 
     let (canonical, report) = core_dedupe(&bookmarks);

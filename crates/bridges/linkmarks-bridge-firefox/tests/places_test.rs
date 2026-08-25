@@ -105,6 +105,44 @@ fn places_skips_separator_kind_3() {
 }
 
 #[test]
+fn places_filters_internal_url_schemes_case_insensitive() {
+    // Firefox and some extensions occasionally emit mixed-case or
+    // upper-case internal-scheme URLs (e.g. `ABOUT:HOME`,
+    // `JavaScript:void(0)`). The filter must catch those as well as
+    // the canonical lowercase form.
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("places.sqlite");
+    let db = Connection::open(&path).unwrap();
+    db.execute_batch(
+        "CREATE TABLE moz_places (id INTEGER PRIMARY KEY, url TEXT, title TEXT, last_visit_date INTEGER, description TEXT); \
+         CREATE TABLE moz_bookmarks (id INTEGER PRIMARY KEY, type INTEGER, fk INTEGER, parent INTEGER, position INTEGER, title TEXT, lastModified INTEGER); \
+         INSERT INTO moz_bookmarks VALUES \
+            (1,2,NULL,0,0,'Menu',1),\
+            (10,1,11,1,0,'ABOUT upper',1),\
+            (11,1,12,1,1,'JavaScript mixed',1),\
+            (12,1,13,1,2,'PLACE upper',1),\
+            (13,1,14,1,3,'Data upper',1),\
+            (14,1,15,1,4,'real',1); \
+         INSERT INTO moz_places VALUES \
+            (11,'ABOUT:HOME','about',1,NULL),\
+            (12,'JavaScript:void(0)','js',1,NULL),\
+            (13,'PLACE:folder/1','place',1,NULL),\
+            (14,'DATA:text/plain,hi','data',1,NULL),\
+            (15,'https://example.com/','real',1,NULL);",
+    )
+    .unwrap();
+    drop(db);
+    let source = FirefoxSource::from_places_path(dir.path().join("places.sqlite")).unwrap();
+    let list = source.list().unwrap();
+    assert_eq!(
+        list.len(),
+        1,
+        "only the real https URL should survive; mixed-case internal schemes are filtered"
+    );
+    assert_eq!(list[0].original_url, "https://example.com/");
+}
+
+#[test]
 fn places_filters_internal_url_schemes() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("places.sqlite");
@@ -204,9 +242,14 @@ fn places_handles_fk_null_bookmark() {
 
 #[test]
 fn places_retries_on_busy_then_succeeds() {
-    // Open a write-mode connection in this thread that holds an exclusive
-    // lock for a short while, then closes. The bridge should retry the
-    // open until the writer releases.
+    // Open a write-mode connection that holds BEGIN EXCLUSIVE for a
+    // short while. EXCLUSIVE blocks both writers AND readers (unlike
+    // BEGIN IMMEDIATE, which permits concurrent readers), so the
+    // bridge's read-only open and the subsequent query_map both hit
+    // SQLITE_BUSY while the writer holds the lock. The retry loop in
+    // `parse_places` covers the entire read flow (open + prepare +
+    // query_map + iteration), so it must absorb the contention and
+    // complete successfully after the writer releases.
     use std::time::Duration;
 
     let dir = tempdir().unwrap();
@@ -221,17 +264,21 @@ fn places_retries_on_busy_then_succeeds() {
     .unwrap();
     drop(init);
 
+    // Writer holds EXCLUSIVE for 350ms — long enough for the reader's
+    // first open attempt to fail with SQLITE_BUSY but short enough that
+    // the retry loop (100 + 200 + 300 = 600 ms of backoff) finishes
+    // before the writer's 350ms hold.
     let writer_path = path.clone();
     let writer = std::thread::spawn(move || {
         let conn = Connection::open(&writer_path).unwrap();
-        conn.execute_batch("BEGIN IMMEDIATE;").unwrap();
-        std::thread::sleep(Duration::from_millis(750));
+        conn.execute_batch("BEGIN EXCLUSIVE;").unwrap();
+        std::thread::sleep(Duration::from_millis(350));
         conn.execute_batch("COMMIT;").unwrap();
     });
 
-    // Give the writer thread a head-start so the FIRST open attempt hits
-    // SQLITE_BUSY. Subsequent attempts (after 100ms / 200ms backoff) hit
-    // the now-released file.
+    // Give the writer thread a head-start so the FIRST read attempt
+    // hits SQLITE_BUSY. Subsequent retries (after 100/200/300 ms
+    // backoff) hit the now-released file.
     std::thread::sleep(Duration::from_millis(100));
     let source = FirefoxSource::from_places_path(path.clone()).unwrap();
     let list = source.list().unwrap();

@@ -50,7 +50,11 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
         .clone()
         .unwrap_or_else(|| default_source_label(&paths.store).to_string());
 
-    match source_label.as_str() {
+    // The CLI accepts Chromium-family aliases (`brave`, `vivaldi`,
+    // `edge`, `arc`, ...) that collapse to `SourceKind::Chromium` via
+    // `from_cli_str`. Normalize FIRST, then check whether the resolved
+    // kind is path-backed, so the alias list is exhaustive.
+    let kind = match source_label.as_str() {
         "store" => {
             if !paths.store.exists() {
                 bail!(
@@ -62,28 +66,25 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
             let bookmarks = s.list(args.limit.max(1), args.offset)?;
             let rendered = ui::render(&bookmarks, format)?;
             print!("{rendered}");
-            Ok(crate::exit_codes::OK)
+            return Ok(crate::exit_codes::OK);
         }
-        "chrome" | "firefox" | "netscape" | "html" => {
-            let kind = linkmarks_core::SourceKind::from_cli_str(source_label.as_str())
-                .ok_or_else(|| anyhow::anyhow!("unknown source '{source_label}'"))?;
-            if !is_path_source(kind) {
-                bail!("unsupported --source '{source_label}' (try one of {:?})", PATH_SOURCE_KINDS);
-            }
-            let path = match args.path.clone() {
-                Some(p) => p,
-                None => default_path_for(kind)?,
-            };
-            let bookmarks = open_source(kind, &path)?;
-            let rendered = ui::render(&bookmarks, format)?;
-            print!("{rendered}");
-            Ok(crate::exit_codes::OK)
-        }
-        other => bail!(
-            "unsupported --source '{other}' (try `store` or one of {:?})",
+        _ => linkmarks_core::SourceKind::from_cli_str(source_label.as_str())
+            .ok_or_else(|| anyhow::anyhow!("unknown source '{source_label}'"))?,
+    };
+    if !is_path_source(kind) {
+        bail!(
+            "unsupported --source '{source_label}' (try one of {:?})",
             PATH_SOURCE_KINDS
-        ),
+        );
     }
+    let path = match args.path.clone() {
+        Some(p) => p,
+        None => default_path_for(kind)?,
+    };
+    let bookmarks = open_source(kind, &path)?;
+    let rendered = ui::render(&bookmarks, format)?;
+    print!("{rendered}");
+    Ok(crate::exit_codes::OK)
 }
 
 /// Decide the default source label: `store` if the DB exists,
@@ -96,6 +97,9 @@ fn default_source_label(store_path: &std::path::Path) -> &'static str {
     }
 }
 
+/// Default Chromium `Bookmarks` JSON path under `$HOME`, used when
+/// the operator does not pass `--path` and `--source` resolves to a
+/// Chromium-family browser.
 fn default_chrome_path() -> PathBuf {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)

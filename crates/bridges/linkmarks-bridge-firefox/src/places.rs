@@ -20,9 +20,12 @@ const RETRY_BACKOFF_MS: u64 = 100;
 /// URL schemes that should be skipped even when Firefox emits them as
 /// bookmark entries. These are internal/virtual addresses with no
 /// canonical external target.
-const INTERNAL_URL_PREFIXES: &[&str] =
-    &["place:", "about:", "javascript:", "chrome:", "data:"];
+const INTERNAL_URL_PREFIXES: &[&str] = &["place:", "about:", "javascript:", "chrome:", "data:"];
 
+/// Raw shape of a row read from `moz_places` + `moz_bookmarks`. Only
+/// the columns we actually use are decoded; unknown columns (e.g. the
+/// optional `description` field on `moz_places`) are tolerated by the
+/// caller via the `has_description` probe above.
 #[derive(Debug)]
 struct PlaceRow {
     id: i64,
@@ -48,35 +51,30 @@ fn is_busy_or_locked(error: &rusqlite::Error) -> bool {
 
 /// Returns `true` for URL schemes Firefox stores as bookmarks but that
 /// point at internal addresses with no canonical external target.
+///
+/// Comparison is case-insensitive on the URI scheme (the part before
+/// the first `:`) so URLs like `ABOUT:HOME` or `JavaScript:void(0)`
+/// emitted by Firefox or third-party extensions are filtered the same
+/// as their lowercase canonical forms.
 fn is_internal_url(url: &str) -> bool {
-    INTERNAL_URL_PREFIXES
-        .iter()
-        .any(|prefix| url.starts_with(prefix))
+    let Some((scheme, _)) = url.split_once(':') else {
+        return false;
+    };
+    INTERNAL_URL_PREFIXES.iter().any(|prefix| {
+        // Each entry ends with `:` — compare scheme case-insensitively.
+        prefix
+            .strip_suffix(':')
+            .is_some_and(|s| s.eq_ignore_ascii_case(scheme))
+    })
 }
 
-/// Open `places.sqlite` in read-only mode with a busy timeout, retrying
-/// transient contention up to `RETRY_MAX_ATTEMPTS` times.
-fn open_with_retry(path: &Path) -> Result<Connection, BridgeError> {
-    let mut attempts: u32 = 0;
-    let conn = loop {
-        match Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
-            Ok(conn) => break conn,
-            Err(e) if is_busy_or_locked(&e) && attempts < RETRY_MAX_ATTEMPTS => {
-                attempts += 1;
-                sleep(Duration::from_millis(RETRY_BACKOFF_MS * attempts as u64));
-            }
-            Err(e) => {
-                return Err(if is_busy_or_locked(&e) {
-                    BridgeError::DatabaseLocked {
-                        attempts,
-                        last_error: e.to_string(),
-                    }
-                } else {
-                    BridgeError::SqliteOpen(e)
-                });
-            }
-        }
-    };
+/// Open `places.sqlite` in read-only mode and apply the busy-timeout
+/// pragma. Does NOT retry on its own — the retry loop wraps the entire
+/// read flow (`open + prepare + query_map + iteration`) in
+/// [`parse_places`] so any stage that hits contention is covered.
+fn open_connection(path: &Path) -> Result<Connection, BridgeError> {
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(BridgeError::SqliteOpen)?;
     conn.busy_timeout(Duration::from_millis(
         linkmarks_core::storage::BUSY_TIMEOUT_MS as u64,
     ))
@@ -84,9 +82,12 @@ fn open_with_retry(path: &Path) -> Result<Connection, BridgeError> {
     Ok(conn)
 }
 
-/// Parse a Firefox profile database without ever opening it for writing.
-pub fn parse_places(path: &Path) -> Result<Vec<Bookmark>, BridgeError> {
-    let connection = open_with_retry(path)?;
+/// Read flow used inside the retry loop. All SQL access stages that
+/// can hit `SQLITE_BUSY`/`SQLITE_LOCKED` (open, prepare, query_map,
+/// row iteration) live here so the caller can re-run the whole flow
+/// when any one stage fails under contention.
+fn read_places(path: &Path) -> Result<Vec<Bookmark>, BridgeError> {
+    let connection = open_connection(path)?;
     let has_description = connection
         .prepare("PRAGMA table_info(moz_places)")
         .map_err(BridgeError::SqliteQuery)?
@@ -128,6 +129,59 @@ pub fn parse_places(path: &Path) -> Result<Vec<Bookmark>, BridgeError> {
     Ok(output)
 }
 
+/// Parse a Firefox profile database without ever opening it for writing.
+///
+/// Retries the complete read flow (open + prepare + query_map +
+/// iteration) up to [`RETRY_MAX_ATTEMPTS`] times when SQLite reports
+/// transient contention (`SQLITE_BUSY` / `SQLITE_LOCKED`). This covers
+/// any stage that Firefox's own writes can block — not only the open
+/// itself. Exhaustion surfaces as
+/// [`BridgeError::DatabaseLocked`] with the attempt count and the last
+/// error string for diagnostics.
+pub fn parse_places(path: &Path) -> Result<Vec<Bookmark>, BridgeError> {
+    let mut attempts: u32 = 0;
+    loop {
+        match read_places(path) {
+            Ok(bookmarks) => return Ok(bookmarks),
+            Err(error) if is_busy_or_locked_error(&error) && attempts < RETRY_MAX_ATTEMPTS => {
+                attempts += 1;
+                sleep(Duration::from_millis(RETRY_BACKOFF_MS * attempts as u64));
+            }
+            Err(error) if is_busy_or_locked_error(&error) => {
+                return Err(BridgeError::DatabaseLocked {
+                    attempts,
+                    last_error: busy_or_locked_message(&error).unwrap_or_default(),
+                });
+            }
+            Err(other) => return Err(other),
+        }
+    }
+}
+
+/// Returns `true` when the [`BridgeError`] wraps a rusqlite
+/// `SQLITE_BUSY` / `SQLITE_LOCKED` failure.
+fn is_busy_or_locked_error(error: &BridgeError) -> bool {
+    match error {
+        BridgeError::SqliteOpen(inner) | BridgeError::SqliteQuery(inner) => {
+            is_busy_or_locked(inner)
+        }
+        BridgeError::DatabaseLocked { .. } => false,
+        _ => false,
+    }
+}
+
+/// Extract the string form of the inner rusqlite error if the
+/// [`BridgeError`] wraps one of the contention variants.
+fn busy_or_locked_message(error: &BridgeError) -> Option<String> {
+    match error {
+        BridgeError::SqliteOpen(inner) | BridgeError::SqliteQuery(inner) => Some(inner.to_string()),
+        _ => None,
+    }
+}
+
+/// Decode a single SQL row produced by the `moz_bookmarks LEFT JOIN
+/// moz_places` query into a [`PlaceRow`]. Column indices match the
+/// SELECT projection in [`read_places`].
 fn row_to_place(row: &Row<'_>) -> rusqlite::Result<PlaceRow> {
     Ok(PlaceRow {
         id: row.get(0)?,
@@ -142,6 +196,15 @@ fn row_to_place(row: &Row<'_>) -> rusqlite::Result<PlaceRow> {
     })
 }
 
+/// Recursively walk the `moz_bookmarks` tree starting at `id`,
+/// emitting one [`Bookmark`] per regular bookmark entry (type=1) and
+/// tracking folder ancestors for the `collection` and `tags` fields.
+///
+/// `ancestors` is the chain of folder names from the closest canonical
+/// root (Bookmarks Menu / Toolbar / Other) down to — but not including —
+/// the current folder. Mozilla `type` semantics: 1 = bookmark, 2 =
+/// folder, 3 = separator (and any other value is skipped). Cycles are
+/// prevented via the `emitted` set keyed by row id.
 fn walk(
     id: i64,
     ancestors: &[String],
@@ -181,8 +244,8 @@ fn walk(
             // Fall back to the raw URL when canonicalization fails so the
             // caller (`import.rs::canonicalize_bookmarks`) can apply its
             // own config and decide whether to keep or drop.
-            let canonical_url = linkmarks_core::canonicalize(url)
-                .unwrap_or_else(|_| url.to_string());
+            let canonical_url =
+                linkmarks_core::canonicalize(url).unwrap_or_else(|_| url.to_string());
             output.push(Bookmark {
                 id: BookmarkId::generate(),
                 original_url: url.to_string(),
@@ -218,9 +281,7 @@ fn walk(
                 _ => folder.title.trim(),
             };
             let mut next = ancestors.to_vec();
-            if !root_name.is_empty()
-                && !root_name.to_ascii_lowercase().starts_with("tag:")
-            {
+            if !root_name.is_empty() && !root_name.to_ascii_lowercase().starts_with("tag:") {
                 next.push(root_name.to_string());
             }
             if let Some(ids) = children.get(&id) {
@@ -235,6 +296,9 @@ fn walk(
     }
 }
 
+/// Slugify a folder name for use inside a `#folder/<slug>` tag.
+/// Non-alphanumeric runs collapse to single `-` and leading/trailing
+/// dashes are trimmed so the tag is safe to embed in a tag tree.
 fn slug(value: &str) -> String {
     let mut out = String::new();
     let mut sep = false;

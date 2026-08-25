@@ -31,10 +31,14 @@ Brave / Arc / Opera can import through their built-in Bookmark manager.
 
 ### Improved
 - **Firefox bridge now applies `PRAGMA busy_timeout = 5000`** when
-  opening `places.sqlite`, and retries up to 3 times (100 ms backoff) on
-  `SQLITE_BUSY` / `SQLITE_LOCKED` — Firefox routinely holds a write
+  opening `places.sqlite`, and retries the complete read flow (open +
+  prepare + query_map + row iteration) up to 3 times (100 ms backoff)
+  on `SQLITE_BUSY` / `SQLITE_LOCKED` — Firefox routinely holds a write
   lock on the file while the user is browsing, so the previous
-  read-only open aborted mid-import with no recovery path.
+  read-only open aborted mid-import with no recovery path. Internal
+  URL-scheme filtering is now case-insensitive on the URI scheme so
+  `ABOUT:HOME`, `JavaScript:void(0)`, etc. are caught as well as the
+  lowercase canonical forms.
 - **`updated_at` now derives from `moz_bookmarks.lastModified`** instead
   of `moz_places.last_visit_date`. The previous source conflated edits
   with visits; the new source reflects actual bookmark mutation time.
