@@ -1370,7 +1370,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "linkmarks-bridge-chromium",
  "linkmarks-bridge-firefox",
@@ -1400,12 +1400,13 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-chromium"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "chrono",
  "linkmarks-core",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.20",
  "tracing",
  "walkdir",
@@ -1413,7 +1414,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-firefox"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "chrono",
  "linkmarks-core",
@@ -1428,7 +1429,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-bridge-netscape"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "chrono",
  "linkmarks-core",
@@ -1442,13 +1443,15 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-cli"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "anyhow",
  "chrono",
  "clap",
  "clap_complete",
  "linkmarks-bridge-chromium",
+ "linkmarks-bridge-firefox",
+ "linkmarks-bridge-netscape",
  "linkmarks-core",
  "linkmarks-tui",
  "serde",
@@ -1463,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-core"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "chrono",
  "dirs",
@@ -1480,7 +1483,7 @@ dependencies = [
 
 [[package]]
 name = "linkmarks-tui"
-version = "2.2.0"
+version = "2.2.1"
 dependencies = [
  "anyhow",
  "chrono",
