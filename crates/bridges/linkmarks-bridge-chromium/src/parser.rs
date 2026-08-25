@@ -22,8 +22,8 @@
 use chrono::{DateTime, TimeZone, Utc};
 use linkmarks_core::errors::CoreError;
 use linkmarks_core::model::{Bookmark, BookmarkId, SourceKind, SourceRef, Tag};
-use serde::Deserialize;
-use std::collections::BTreeSet;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use thiserror::Error;
 
@@ -50,26 +50,40 @@ pub enum ParseError {
 }
 
 /// Top-level deserialized shape.
-#[derive(Debug, Deserialize)]
+///
+/// Same struct is reused for **serialization** (sink write-back). See
+/// `sink.rs` for the writer. Field shapes are deliberately identical
+/// between read and write paths so the schema stays in lock-step.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChromiumBookmarks {
     /// Map of root containers (`bookmark_bar`, `other`, `synced`).
     pub roots: Roots,
 }
 
 /// Container of root folders.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Roots {
     /// Main bookmarks bar.
     pub bookmark_bar: BookmarkNode,
     /// Other bookmarks (uncategorized).
     pub other: BookmarkNode,
     /// Synced bookmarks (mobile etc.); absent in some browsers.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub synced: Option<BookmarkNode>,
+    /// Opera's `custom_root` is a wrapper map grouping non-standard
+    /// top-level containers (`pinboard`, `speedDial`, `personal_bar`).
+    /// Each value is itself a `BookmarkNode`. Absent in standard
+    /// Chromium / Vivaldi / Brave / Arc.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_root: Option<BTreeMap<String, BookmarkNode>>,
 }
 
 /// Recursive node.
-#[derive(Debug, Deserialize, Clone)]
+///
+/// Used for both reading and writing Chromium Bookmarks JSON. The
+/// `skip_serializing_if` attributes keep the output JSON compact —
+/// folders don't emit `url`, URLs don't emit empty `children`, etc.
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct BookmarkNode {
     /// `"folder"` or `"url"`.
     #[serde(rename = "type")]
@@ -78,17 +92,17 @@ pub struct BookmarkNode {
     #[serde(default)]
     pub name: String,
     /// URL (only for `type == "url"`).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     /// Children (only for `type == "folder"`).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<BookmarkNode>,
     /// Chromium timestamp (microseconds since Windows epoch
     /// 1601-01-01). Optional.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub date_added: Option<String>,
     /// Last-used timestamp, same encoding.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub date_last_used: Option<String>,
 }
 
@@ -111,6 +125,14 @@ pub fn flatten(roots: &ChromiumBookmarks) -> (Vec<Bookmark>, Vec<ParseError>) {
     flatten_node(&roots.roots.other, "", &mut bookmarks, &mut errors);
     if let Some(synced) = &roots.roots.synced {
         flatten_node(synced, "", &mut bookmarks, &mut errors);
+    }
+    // Opera's `custom_root` wraps several non-standard top-level
+    // containers (`pinboard`, `speedDial`, …) as a map of
+    // BookmarkNode values. Walk each one.
+    if let Some(custom) = &roots.roots.custom_root {
+        for node in custom.values() {
+            flatten_node(node, "", &mut bookmarks, &mut errors);
+        }
     }
 
     (bookmarks, errors)
@@ -205,6 +227,19 @@ fn parse_chromium_timestamp(raw: Option<&str>) -> Option<DateTime<Utc>> {
     let secs = unix_micros.div_euclid(1_000_000);
     let nsec = (unix_micros.rem_euclid(1_000_000) * 1000) as u32;
     Utc.timestamp_opt(secs, nsec).single()
+}
+
+/// Encode a `DateTime<Utc>` as Chromium microseconds since the
+/// Windows FILETIME epoch (1601-01-01). Used by `sink.rs` when
+/// writing `date_added` and `date_last_used`. Negative timestamps
+/// (pre-1601) clamp to `0`.
+#[must_use]
+pub fn chromium_timestamp(dt: DateTime<Utc>) -> String {
+    let unix_micros = dt.timestamp_micros();
+    let win_micros = unix_micros
+        .checked_add(11_644_473_600_000_000)
+        .unwrap_or(0);
+    win_micros.max(0).to_string()
 }
 
 /// Helper: parse + flatten in one call. Returns the bookmarks plus
@@ -334,5 +369,42 @@ mod tests {
         // 13226064000000000 = (2020-02-14 - 1601-01-01) in micros.
         let ts = parse_chromium_timestamp(Some("13226064000000000")).unwrap();
         assert_eq!(ts.timestamp(), 1581590400);
+    }
+
+    #[test]
+    fn parses_opera_custom_root_with_speed_dial() {
+        // Opera GX wraps non-standard roots (speedDial, pinboard, ...)
+        // inside `roots.custom_root`, itself a map of BookmarkNode
+        // values. This is the canonical schema that v1's catch-all
+        // flattening missed.
+        let json = r#"{
+            "roots": {
+                "bookmark_bar": {"type":"folder","name":"Bookmarks bar","children":[]},
+                "other":       {"type":"folder","name":"Other bookmarks","children":[]},
+                "custom_root": {
+                    "speedDial": {
+                        "type":"folder","name":"Speed Dials","children":[
+                            {"type":"folder","name":"loust","children":[
+                                {"type":"url","name":"Meetup","url":"https://meetup.com/"}
+                            ]}
+                        ]
+                    },
+                    "pinboard": {
+                        "type":"folder","name":"Pinboard","children":[]
+                    }
+                }
+            }
+        }"#;
+        let parsed: ChromiumBookmarks = serde_json::from_str(json).unwrap();
+        let (bookmarks, errors) = flatten(&parsed);
+        assert!(errors.is_empty(), "errors: {errors:?}");
+        assert_eq!(bookmarks.len(), 1, "speedDial/loust/Meetup expected");
+        let bm = &bookmarks[0];
+        assert_eq!(bm.title, "Meetup");
+        assert_eq!(bm.canonical_url, "https://meetup.com/");
+        // The collection must reflect the nested path, including the
+        // custom_root sub-tree ("Speed Dials/loust").
+        assert_eq!(bm.collection.as_deref(), Some("Speed Dials/loust"));
+        assert!(matches!(bm.source.kind, SourceKind::Chromium));
     }
 }
