@@ -6,5 +6,6 @@ pub mod export;
 pub mod import;
 pub mod init;
 pub mod list;
+pub mod source_dispatch;
 pub mod sync;
 pub mod tui;

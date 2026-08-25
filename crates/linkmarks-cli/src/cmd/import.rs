@@ -1,7 +1,9 @@
 //! `linkmarks import` — import bookmarks from a source file into the store.
 //!
 //! Pipeline:
-//! 1. Open the source (Chromium JSON in v1).
+//! 1. Open the source via [`crate::cmd::source_dispatch::open_source`].
+//!    Chromium JSON, Firefox `places.sqlite`, Firefox `jsonlz4` backups,
+//!    and Netscape bookmark HTML are all supported in v2.
 //! 2. Read bookmarks via `BookmarkSource::list()`.
 //! 3. Canonicalize each URL through the loader-supplied
 //!    [`CanonicalConfig`](linkmarks_core::CanonicalConfig).
@@ -9,20 +11,24 @@
 //!
 //! `--dry-run` parses and canonicalizes but does not write the store.
 //! `--source=store` is rejected — `import` always writes, never reads,
-//! from the store.
+//! from the store. Network-backed sources (Pinboard / Linkwarden) are
+//! rejected because this CLI build does not link their SDKs.
 
+use crate::cmd::source_dispatch::{is_path_source, open_source, PATH_SOURCE_KINDS};
 use crate::Paths;
 use anyhow::{bail, Result};
 use clap::Args;
 use linkmarks_core::canonical::canonicalize_with;
 use linkmarks_core::config::load_from;
 use linkmarks_core::store;
-use linkmarks_core::traits::BookmarkSource;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct ImportArgs {
-    /// Source to import from. `chrome` parses a Chromium JSON file.
+    /// Source to import from. Accepted values: `chrome` (Chromium JSON,
+    /// including Chrome/Brave/Edge/Arc/Vivaldi/Opera aliases), `firefox`
+    /// (live `places.sqlite` or `*.jsonlz4` backup), or `netscape`
+    /// (Netscape bookmark HTML).
     #[arg(long, default_value = "chrome")]
     pub source: String,
 
@@ -43,8 +49,12 @@ pub struct ImportArgs {
 pub fn run(args: ImportArgs, _format: crate::Format, paths: Paths) -> Result<i32> {
     let kind = linkmarks_core::SourceKind::from_cli_str(&args.source)
         .ok_or_else(|| anyhow::anyhow!("unknown source '{}'", args.source))?;
-    if !matches!(kind, linkmarks_core::SourceKind::Chromium) {
-        bail!("v1 only supports --source=chrome");
+    if !is_path_source(kind) {
+        bail!(
+            "--source={} is not importable from this CLI build; try one of {:?}",
+            args.source,
+            PATH_SOURCE_KINDS
+        );
     }
     if !args.path.exists() {
         bail!("source file not found: {}", args.path.display());
@@ -53,8 +63,7 @@ pub fn run(args: ImportArgs, _format: crate::Format, paths: Paths) -> Result<i32
         bail!("--fresh and --dry-run are mutually exclusive");
     }
 
-    let src = linkmarks_bridge_chromium::ChromiumSource::open(&args.path)?;
-    let bookmarks = src.list()?;
+    let bookmarks = open_source(kind, &args.path)?;
     let cfg = load_from(&paths.config)?;
     let report = canonicalize_bookmarks(&bookmarks, &cfg);
 
@@ -134,7 +143,7 @@ fn canonicalize_bookmarks(
             Err(e) => {
                 tracing::warn!(
                     error = %e,
-                    url = %bm.original_url,
+                    url = &bm.original_url,
                     "canonicalize failed; keeping as-is"
                 );
                 canonical.push(bm.clone());
@@ -188,5 +197,22 @@ mod tests {
             .starts_with("https://example.com/"));
         assert!(report.canonical[0].canonical_url.contains("id=42"));
         assert!(!report.canonical[0].canonical_url.contains("utm_source"));
+    }
+
+    #[test]
+    fn from_cli_str_accepts_firefox_and_netscape_aliases() {
+        // Spot-check the dispatch accepts the new sources at the parse layer.
+        assert_eq!(
+            linkmarks_core::SourceKind::from_cli_str("firefox"),
+            Some(SourceKind::Firefox)
+        );
+        assert_eq!(
+            linkmarks_core::SourceKind::from_cli_str("netscape"),
+            Some(SourceKind::Netscape)
+        );
+        assert_eq!(
+            linkmarks_core::SourceKind::from_cli_str("html"),
+            Some(SourceKind::Netscape)
+        );
     }
 }
