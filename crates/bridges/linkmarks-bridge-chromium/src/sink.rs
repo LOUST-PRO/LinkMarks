@@ -155,14 +155,8 @@ impl ChromiumSink {
                 }
             } else {
                 match root {
-                    TargetRoot::BookmarkBar => bar_urls_by_path
-                        .entry(rel)
-                        .or_default()
-                        .push(node),
-                    TargetRoot::Other => other_urls_by_path
-                        .entry(rel)
-                        .or_default()
-                        .push(node),
+                    TargetRoot::BookmarkBar => bar_urls_by_path.entry(rel).or_default().push(node),
+                    TargetRoot::Other => other_urls_by_path.entry(rel).or_default().push(node),
                 }
             }
         }
@@ -361,8 +355,7 @@ fn assemble_folder_tree(
 
     let mut urls_by_path = urls_by_path;
     for (_depth, path) in paths_by_depth {
-        let mut children: Vec<BookmarkNode> =
-            urls_by_path.remove(&path).unwrap_or_default();
+        let mut children: Vec<BookmarkNode> = urls_by_path.remove(&path).unwrap_or_default();
 
         // Pull in any direct sub-folder children (paths of the form
         // `parent/child` where `child` itself has no further '/').
@@ -370,9 +363,7 @@ fn assemble_folder_tree(
         let sub_paths: Vec<String> = folder_nodes
             .keys()
             .filter(|k| {
-                k.len() > prefix.len()
-                    && k.starts_with(&prefix)
-                    && !k[prefix.len()..].contains('/')
+                k.len() > prefix.len() && k.starts_with(&prefix) && !k[prefix.len()..].contains('/')
             })
             .cloned()
             .collect();
@@ -471,12 +462,9 @@ fn collect_flat(node: &BookmarkNode, prefix: &str, out: &mut Vec<Bookmark>) {
     match node.kind.as_str() {
         "url" => {
             if let Some(url) = &node.url {
-                let canonical =
-                    linkmarks_core::canonicalize(url).unwrap_or_else(|_| url.clone());
-                let created_at =
-                    parse_date(node.date_added.as_deref()).unwrap_or_else(Utc::now);
-                let updated_at =
-                    parse_date(node.date_last_used.as_deref()).unwrap_or(created_at);
+                let canonical = linkmarks_core::canonicalize(url).unwrap_or_else(|_| url.clone());
+                let created_at = parse_date(node.date_added.as_deref()).unwrap_or_else(Utc::now);
+                let updated_at = parse_date(node.date_last_used.as_deref()).unwrap_or(created_at);
                 let collection = if prefix.is_empty() {
                     None
                 } else {
@@ -607,7 +595,11 @@ mod tests {
     fn build_emits_nested_folders() {
         let list = vec![
             bk("https://example.com/a", "A", Some("Work/Research")),
-            bk("https://example.com/b", "B", Some("Work/Engineering/Backend")),
+            bk(
+                "https://example.com/b",
+                "B",
+                Some("Work/Engineering/Backend"),
+            ),
             bk("https://example.com/c", "C", Some("Work/Research")),
         ];
         let tree = ChromiumSink::build_chromium_bookmarks(&list);
@@ -615,16 +607,11 @@ mod tests {
         let work = &tree.roots.bookmark_bar.children[0];
         assert_eq!(work.name, "Work");
         // Work has 2 children: Research, Engineering
-        let mut names: Vec<&str> =
-            work.children.iter().map(|c| c.name.as_str()).collect();
+        let mut names: Vec<&str> = work.children.iter().map(|c| c.name.as_str()).collect();
         names.sort();
         assert_eq!(names, vec!["Engineering", "Research"]);
         // Research has 2 url children (A, C)
-        let research = work
-            .children
-            .iter()
-            .find(|c| c.name == "Research")
-            .unwrap();
+        let research = work.children.iter().find(|c| c.name == "Research").unwrap();
         assert_eq!(research.children.len(), 2);
         // Engineering > Backend > B
         let eng = work
@@ -726,6 +713,43 @@ mod tests {
         assert!(target.exists());
         let bytes = fs::read(&target).unwrap();
         assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn build_drops_tags_silently() {
+        // Chromium's native Bookmarks JSON has no tag field, so the
+        // sink drops `Bookmark::tags` silently rather than appending
+        // them to the name. Synthetic `#folder/*` tags are dropped
+        // for the same reason (they're re-derivable from `collection`
+        // on re-import). This test pins the contract: a bookmark with
+        // tags set emits a url-node whose `name` equals `b.title` —
+        // no `(tags: ...)` suffix, no leak of tag content.
+        let mut bm = bk("https://example.com/", "Plain Title", Some("Work"));
+        bm.tags = vec!["foo".to_string(), "bar".to_string()];
+        let tree = ChromiumSink::build_chromium_bookmarks(&[bm]);
+        let work = &tree.roots.bookmark_bar.children[0];
+        let url_node = &work.children[0];
+        assert_eq!(url_node.kind, "url");
+        assert_eq!(
+            url_node.name, "Plain Title",
+            "tags must NOT be appended to the name (Chromium schema has no tag field)"
+        );
+        assert!(
+            !url_node.name.contains("(tags:"),
+            "no tag-suffix formatting in the emitted JSON"
+        );
+        assert!(
+            !url_node.name.contains("foo"),
+            "tag names must not leak into the bookmark name"
+        );
+
+        // Round-trip the body and verify the bookmark still appears
+        // with the plain title and no tags in the parsed record.
+        let body = ChromiumSink::render(&tree);
+        assert!(
+            !body.contains("(tags:") && !body.contains("\"tags\""),
+            "rendered JSON must not include any tag field"
+        );
     }
 
     #[test]
