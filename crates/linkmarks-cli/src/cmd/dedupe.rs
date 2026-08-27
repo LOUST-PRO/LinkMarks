@@ -79,10 +79,9 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
                     PATH_SOURCE_KINDS
                 );
             }
-            let path = args
-                .path
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("--path is required for --source={}", args.source))?;
+            let path = args.path.clone().ok_or_else(|| {
+                anyhow::anyhow!("--path is required for --source={}", args.source)
+            })?;
             open_source(kind, &path)?
         }
         other => bail!(

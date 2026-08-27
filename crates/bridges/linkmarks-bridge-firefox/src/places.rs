@@ -20,8 +20,7 @@ const RETRY_BACKOFF_MS: u64 = 100;
 /// URL schemes that should be skipped even when Firefox emits them as
 /// bookmark entries. These are internal/virtual addresses with no
 /// canonical external target.
-const INTERNAL_URL_PREFIXES: &[&str] =
-    &["place:", "about:", "javascript:", "chrome:", "data:"];
+const INTERNAL_URL_PREFIXES: &[&str] = &["place:", "about:", "javascript:", "chrome:", "data:"];
 
 #[derive(Debug)]
 struct PlaceRow {
@@ -181,8 +180,8 @@ fn walk(
             // Fall back to the raw URL when canonicalization fails so the
             // caller (`import.rs::canonicalize_bookmarks`) can apply its
             // own config and decide whether to keep or drop.
-            let canonical_url = linkmarks_core::canonicalize(url)
-                .unwrap_or_else(|_| url.to_string());
+            let canonical_url =
+                linkmarks_core::canonicalize(url).unwrap_or_else(|_| url.to_string());
             output.push(Bookmark {
                 id: BookmarkId::generate(),
                 original_url: url.to_string(),
@@ -218,9 +217,7 @@ fn walk(
                 _ => folder.title.trim(),
             };
             let mut next = ancestors.to_vec();
-            if !root_name.is_empty()
-                && !root_name.to_ascii_lowercase().starts_with("tag:")
-            {
+            if !root_name.is_empty() && !root_name.to_ascii_lowercase().starts_with("tag:") {
                 next.push(root_name.to_string());
             }
             if let Some(ids) = children.get(&id) {

@@ -62,9 +62,7 @@ pub struct SyncArgs {
 
 pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> {
     if args.remote.is_some() && !args.dry_run {
-        bail!(
-            "live sync is relay-binary work; today only --dry-run is implemented."
-        );
+        bail!("live sync is relay-binary work; today only --dry-run is implemented.");
     }
     if !args.dry_run {
         bail!("pass --dry-run (the only mode implemented in this preview)");
@@ -125,8 +123,7 @@ pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> 
 
         if let Some(out_dir) = &args.out_dir {
             let path = out_dir.join(format!("{slug}.ydoc.bin"));
-            std::fs::write(&path, &encoded)
-                .with_context(|| format!("write {}", path.display()))?;
+            std::fs::write(&path, &encoded).with_context(|| format!("write {}", path.display()))?;
         }
     }
 
@@ -162,7 +159,7 @@ fn group_by_collection(
     for bm in bookmarks {
         let key = bm
             .collection
-           .clone()
+            .clone()
             .unwrap_or_else(|| "(uncategorized)".to_string());
         map.entry(key).or_default().push(bm.clone());
     }
@@ -182,11 +179,7 @@ fn encode_collection(collection: &str, bookmarks: &[linkmarks_core::Bookmark]) -
         let bookmarks_map = t.get_or_insert_map("bookmarks");
         let tags_map = t.get_or_insert_map("tags_by_bookmark");
         for bm in bookmarks {
-            let bm_entry = bookmarks_map.insert(
-                &mut t,
-                bm.id.0.as_str(),
-                MapPrelim::default(),
-            );
+            let bm_entry = bookmarks_map.insert(&mut t, bm.id.0.as_str(), MapPrelim::default());
             bm_entry.insert(&mut t, "original_url", bm.original_url.clone());
             bm_entry.insert(&mut t, "canonical_url", bm.canonical_url.clone());
             bm_entry.insert(&mut t, "title", bm.title.clone());
@@ -212,7 +205,13 @@ fn encode_collection(collection: &str, bookmarks: &[linkmarks_core::Bookmark]) -
 
 fn collection_slug(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
         .trim_matches('_')
         .to_string()
@@ -256,7 +255,10 @@ mod tests {
         // single-codepoint ellipsis (U+2026). This is what we want for
         // fixed-width column display where the column is `max` wide.
         assert_eq!(truncate("a long collection name here", 10), "a long co…");
-        assert_eq!(truncate("a long collection name here", 24), "a long collection name …");
+        assert_eq!(
+            truncate("a long collection name here", 24),
+            "a long collection name …"
+        );
     }
 
     #[test]

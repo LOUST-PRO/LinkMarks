@@ -32,7 +32,10 @@ pub struct ConcurrencyReport {
     pub encode_delta_bytes: usize,
 }
 
-pub fn measure(thread_count: usize, inserts_per_thread: usize) -> Result<ConcurrencyReport, AutomergeError> {
+pub fn measure(
+    thread_count: usize,
+    inserts_per_thread: usize,
+) -> Result<ConcurrencyReport, AutomergeError> {
     let doc = Arc::new(Mutex::new(Automerge::new()));
 
     // Pre-create the maps (avoid measuring the first-put cost on every
@@ -54,30 +57,40 @@ pub fn measure(thread_count: usize, inserts_per_thread: usize) -> Result<Concurr
     let mut handles = Vec::with_capacity(thread_count);
     for tid in 0..thread_count {
         let doc = doc.clone();
-        handles.push(thread::spawn(move || -> Result<Vec<u128>, AutomergeError> {
-            let mut latencies = Vec::with_capacity(inserts_per_thread);
-            for i in 0..inserts_per_thread {
-                let bookmark_id = format!("t{tid:02}_b{i:05}");
-                let op_start = Instant::now();
-                {
-                    let mut d = doc.lock().expect("automerge mutex poisoned");
-                    let mut tx = d.transaction();
-                    let bookmarks_map = tx.put_object(ROOT, "bookmarks", ObjType::Map)?;
-                    let tags_map = tx.put_object(ROOT, "tags_by_bookmark", ObjType::Map)?;
-                    let bm = tx.put_object(&bookmarks_map, &bookmark_id, ObjType::Map)?;
-                    tx.put(&bm, "original_url", format!("https://contended.example/{tid}/{i}"))?;
-                    tx.put(&bm, "canonical_url", format!("https://contended.example/{tid}/{i}"))?;
-                    tx.put(&bm, "title", format!("Contended bookmark {tid}-{i}"))?;
-                    tx.put(&bm, "source", "Manual")?;
-                    tx.put(&bm, "archived", false)?;
-                    let tags = tx.put_object(&tags_map, &bookmark_id, ObjType::Map)?;
-                    tx.put(&tags, "contended", 1i64)?;
-                    tx.commit();
+        handles.push(thread::spawn(
+            move || -> Result<Vec<u128>, AutomergeError> {
+                let mut latencies = Vec::with_capacity(inserts_per_thread);
+                for i in 0..inserts_per_thread {
+                    let bookmark_id = format!("t{tid:02}_b{i:05}");
+                    let op_start = Instant::now();
+                    {
+                        let mut d = doc.lock().expect("automerge mutex poisoned");
+                        let mut tx = d.transaction();
+                        let bookmarks_map = tx.put_object(ROOT, "bookmarks", ObjType::Map)?;
+                        let tags_map = tx.put_object(ROOT, "tags_by_bookmark", ObjType::Map)?;
+                        let bm = tx.put_object(&bookmarks_map, &bookmark_id, ObjType::Map)?;
+                        tx.put(
+                            &bm,
+                            "original_url",
+                            format!("https://contended.example/{tid}/{i}"),
+                        )?;
+                        tx.put(
+                            &bm,
+                            "canonical_url",
+                            format!("https://contended.example/{tid}/{i}"),
+                        )?;
+                        tx.put(&bm, "title", format!("Contended bookmark {tid}-{i}"))?;
+                        tx.put(&bm, "source", "Manual")?;
+                        tx.put(&bm, "archived", false)?;
+                        let tags = tx.put_object(&tags_map, &bookmark_id, ObjType::Map)?;
+                        tx.put(&tags, "contended", 1i64)?;
+                        tx.commit();
+                    }
+                    latencies.push(op_start.elapsed().as_micros());
                 }
-                latencies.push(op_start.elapsed().as_micros());
-            }
-            Ok(latencies)
-        }));
+                Ok(latencies)
+            },
+        ));
     }
 
     let mut per_thread_lats: Vec<Vec<u128>> = Vec::with_capacity(thread_count);

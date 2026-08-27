@@ -7,10 +7,10 @@
 //!
 //! Wire format (intentionally minimal — spike only):
 //! - POST /sync body: `body[0..8] LE u64 = state_vector_len`
-//!                   followed by `body[8..8+sv_len] = state_vector bytes`
-//!                   followed by `body[8+sv_len..] = yrs update bytes`
+//!   followed by `body[8..8+sv_len] = state_vector bytes`
+//!   followed by `body[8+sv_len..] = yrs update bytes`
 //! - 200 OK body: server's yrs update bytes (full state relative to
-//!                client's state vector)
+//!   client's state vector)
 //! - GET /healthz: returns "ok"
 //!
 //! In production (post-spike) we would use `yrs::sync::SyncMessage` v1/v2
@@ -121,11 +121,7 @@ async fn post_sync(State(state): State<AppState>, body: Bytes) -> impl IntoRespo
         match yrs::Update::decode_v1(&client_update) {
             Ok(parsed) => t.apply_update(parsed),
             Err(e) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    format!("decode_v1 failed: {e}"),
-                )
-                    .into_response();
+                return (StatusCode::BAD_REQUEST, format!("decode_v1 failed: {e}")).into_response();
             }
         }
         t.commit();

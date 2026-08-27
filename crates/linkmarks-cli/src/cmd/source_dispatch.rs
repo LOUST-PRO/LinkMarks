@@ -54,9 +54,13 @@ pub fn open_source(kind: SourceKind, path: &Path) -> Result<Vec<Bookmark>> {
 fn open_firefox(path: &Path) -> Result<linkmarks_bridge_firefox::FirefoxSource> {
     let ext = path.extension().and_then(|e| e.to_str());
     match ext {
-        Some("jsonlz4") => Ok(linkmarks_bridge_firefox::FirefoxSource::from_jsonlz4_path(path)?),
+        Some("jsonlz4") => Ok(linkmarks_bridge_firefox::FirefoxSource::from_jsonlz4_path(
+            path,
+        )?),
         // Default to places.sqlite — the most common Firefox profile store.
-        _ => Ok(linkmarks_bridge_firefox::FirefoxSource::from_places_path(path)?),
+        _ => Ok(linkmarks_bridge_firefox::FirefoxSource::from_places_path(
+            path,
+        )?),
     }
 }
 

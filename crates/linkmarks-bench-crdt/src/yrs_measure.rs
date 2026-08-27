@@ -35,10 +35,7 @@ pub fn measure(bookmarks: &[BenchBookmark]) -> YrsReport {
     // Group by collection name. Uncollected bookmarks → "inbox".
     let mut by_collection: BTreeMap<String, Vec<&BenchBookmark>> = BTreeMap::new();
     for b in bookmarks {
-        let col = b
-            .collection
-            .clone()
-            .unwrap_or_else(|| "inbox".to_string());
+        let col = b.collection.clone().unwrap_or_else(|| "inbox".to_string());
         by_collection.entry(col).or_default().push(b);
     }
 

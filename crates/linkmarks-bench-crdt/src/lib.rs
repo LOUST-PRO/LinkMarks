@@ -5,11 +5,11 @@
 //! / `http_sync_*` binaries. The binaries run the experiments and
 //! produce the per-suite `RESULTS-*.md` writeups.
 
-pub mod fixture;
-pub mod yrs_measure;
-pub mod automerge_measure;
-pub mod yrs_concurrent;
 pub mod automerge_concurrent;
+pub mod automerge_measure;
+pub mod fixture;
+pub mod yrs_concurrent;
+pub mod yrs_measure;
 
 #[cfg(test)]
 mod tests {
@@ -48,7 +48,10 @@ mod tests {
             SourceKind::Manual,
         ] {
             let n = b.iter().filter(|x| x.source == kind).count();
-            assert!(n > 500, "SourceKind::{kind:?} underrepresented: got {n} of 6000");
+            assert!(
+                n > 500,
+                "SourceKind::{kind:?} underrepresented: got {n} of 6000"
+            );
         }
     }
 
@@ -57,7 +60,10 @@ mod tests {
     fn fixture_has_realistic_tag_density() {
         let b = generate_fixture(1_000);
         let with_tags = b.iter().filter(|x| !x.tags.is_empty()).count();
-        assert!(with_tags > 600, "Only {with_tags}/1000 had tags — too sparse");
+        assert!(
+            with_tags > 600,
+            "Only {with_tags}/1000 had tags — too sparse"
+        );
         let too_many_tags = b.iter().filter(|x| x.tags.len() > 5).count();
         assert_eq!(too_many_tags, 0, "Tag pool should cap at 5");
     }

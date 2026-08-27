@@ -68,7 +68,10 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
             let kind = linkmarks_core::SourceKind::from_cli_str(source_label.as_str())
                 .ok_or_else(|| anyhow::anyhow!("unknown source '{source_label}'"))?;
             if !is_path_source(kind) {
-                bail!("unsupported --source '{source_label}' (try one of {:?})", PATH_SOURCE_KINDS);
+                bail!(
+                    "unsupported --source '{source_label}' (try one of {:?})",
+                    PATH_SOURCE_KINDS
+                );
             }
             let path = match args.path.clone() {
                 Some(p) => p,
