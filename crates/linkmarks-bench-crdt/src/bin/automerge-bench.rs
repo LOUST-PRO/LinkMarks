@@ -10,9 +10,7 @@ use linkmarks_bench_crdt::fixture;
 
 fn main() {
     eprintln!("=== automerge-bench (smoke) ===");
-    eprintln!(
-        "automerge crate-version available via `cargo tree -p automerge`"
-    );
+    eprintln!("automerge crate-version available via `cargo tree -p automerge`");
 
     eprintln!("Loading standard fixture (10k synthetic bookmarks)…");
     let bookmarks = fixture::standard_fixture();

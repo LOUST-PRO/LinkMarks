@@ -234,8 +234,7 @@ pub fn generate_fixture(n: usize) -> Vec<BenchBookmark> {
                 _ => SourceKind::Manual,
             };
 
-            let content_type =
-                CONTENT_TYPES[rng.gen_range(0..CONTENT_TYPES.len())].to_string();
+            let content_type = CONTENT_TYPES[rng.gen_range(0..CONTENT_TYPES.len())].to_string();
 
             // ~5% archived (the "I archive instead of delete" crowd).
             let archived = rng.gen_bool(0.05);
@@ -251,11 +250,8 @@ pub fn generate_fixture(n: usize) -> Vec<BenchBookmark> {
                 id: {
                     let ulid_bytes: [u8; 16] = std::array::from_fn(|_| rng.gen());
                     let random_u128 = u128::from_le_bytes(ulid_bytes);
-                    ulid::Ulid::from_parts(
-                        created_at.timestamp_millis() as u64,
-                        random_u128,
-                    )
-                    .to_string()
+                    ulid::Ulid::from_parts(created_at.timestamp_millis() as u64, random_u128)
+                        .to_string()
                 },
                 original_url,
                 canonical_url,

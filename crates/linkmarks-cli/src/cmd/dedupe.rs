@@ -2,26 +2,29 @@
 //!
 //! Reads the live store by default and runs the core dedupe algorithm
 //! over the rows. `--source=chrome` parses a Chromium JSON file
-//! instead. `--apply` re-writes the store with the canonical set:
+//! instead. v2 also accepts `--source=firefox` (live `places.sqlite`
+//! or `*.jsonlz4` backups) and `--source=netscape` (Netscape bookmark
+//! HTML). `--apply` re-writes the store with the canonical set:
 //! archived tombstones are left intact and the winning record is
 //! upserted.
 
+use crate::cmd::source_dispatch::{is_path_source, open_source, PATH_SOURCE_KINDS};
 use crate::Paths;
 use anyhow::{bail, Result};
 use clap::Args;
 use linkmarks_core::dedupe as core_dedupe;
 use linkmarks_core::store;
-use linkmarks_core::traits::BookmarkSource;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct DedupeArgs {
     /// Source to dedupe. `store` (default) reads the SQLite store;
-    /// `chrome` parses a Chromium JSON file.
+    /// `chrome`, `firefox`, or `netscape` parses a browser-backed file.
     #[arg(long, default_value = "store")]
     pub source: String,
 
-    /// Path to a Chromium JSON source. Required when `--source=chrome`.
+    /// Path to a browser-backed source. Required when
+    /// `--source=chrome|firefox|netscape`.
     #[arg(long)]
     pub path: Option<PathBuf>,
 
@@ -66,15 +69,25 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
             }
             all
         }
-        "chrome" => {
-            let path = args
-                .path
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("--path is required for --source=chrome"))?;
-            let src = linkmarks_bridge_chromium::ChromiumSource::open(&path)?;
-            src.list()?
+        "chrome" | "firefox" | "netscape" | "html" => {
+            let kind = linkmarks_core::SourceKind::from_cli_str(args.source.as_str())
+                .ok_or_else(|| anyhow::anyhow!("unknown source '{}'", args.source))?;
+            if !is_path_source(kind) {
+                bail!(
+                    "unsupported --source '{}' (try `store` or one of {:?})",
+                    args.source,
+                    PATH_SOURCE_KINDS
+                );
+            }
+            let path = args.path.clone().ok_or_else(|| {
+                anyhow::anyhow!("--path is required for --source={}", args.source)
+            })?;
+            open_source(kind, &path)?
         }
-        other => bail!("unsupported --source '{other}' (try `store` or `chrome`)"),
+        other => bail!(
+            "unsupported --source '{other}' (try `store` or one of {:?})",
+            PATH_SOURCE_KINDS
+        ),
     };
 
     let (canonical, report) = core_dedupe(&bookmarks);
@@ -118,7 +131,7 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
         let mut rewritten = 0usize;
         for bm in &canonical {
             if let Err(e) = s.upsert(bm) {
-                tracing::warn!(error = %e, url = %bm.original_url, "dedupe upsert failed");
+                tracing::warn!(error = %e, url = &bm.original_url, "dedupe upsert failed");
             } else {
                 rewritten += 1;
             }
@@ -130,7 +143,7 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
         );
     } else {
         eprintln!(
-            "(apply mode: {} canonical records; chrome source has no on-disk write)",
+            "(apply mode: {} canonical records; browser source has no on-disk write)",
             canonical.len()
         );
     }

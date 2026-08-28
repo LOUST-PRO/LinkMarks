@@ -4,30 +4,59 @@
 //! 1. `--source=store`: read from the local SQLite store (default).
 //! 2. `--source=chrome`: parse a Chromium JSON file.
 //!
-//! Sink formats: `netscape` (HTML) and `json` (NDJSON, one
-//! `Bookmark` per line). `--output=-` writes to stdout; any other
-//! value is treated as a file path.
+//! v2 also accepts `--source=firefox` (live `places.sqlite` or
+//! `*.jsonlz4` backups) and `--source=netscape` (Netscape bookmark
+//! HTML). All three path sources use [`crate::cmd::source_dispatch`].
+//!
+//! Sink formats:
+//! - `netscape` — HTML interchange file (HTML)
+//! - `json` — NDJSON, one `Bookmark` per line
+//! - `chrome` — Chromium Bookmarks JSON, consumable by
+//!   Vivaldi / Chrome / Edge / Brave / Arc / Opera via "Import
+//!   bookmarks" UI
 
+use crate::cmd::source_dispatch::{is_path_source, open_source, PATH_SOURCE_KINDS};
 use crate::Paths;
 use anyhow::{bail, Result};
 use clap::Args;
 use linkmarks_core::store;
-use linkmarks_core::traits::BookmarkSource;
 use std::path::PathBuf;
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExportFormat {
+    Netscape,
+    Json,
+    Chrome,
+}
+
+impl FromStr for ExportFormat {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "netscape" | "html" => Ok(Self::Netscape),
+            "json" | "ndjson" => Ok(Self::Json),
+            "chrome" | "chromium" => Ok(Self::Chrome),
+            other => bail!("unsupported export format '{other}' (valid: netscape, json, chrome)"),
+        }
+    }
+}
 
 #[derive(Args, Debug)]
 pub struct ExportArgs {
-    /// Output format. `netscape` emits an HTML interchange file;
-    /// `json` emits NDJSON.
+    /// Output format. `netscape` (HTML), `json` (NDJSON), or
+    /// `chrome` (Chromium Bookmarks JSON consumable by
+    /// Vivaldi/Chrome/Edge/Brave/Arc/Opera via Import UI).
     #[arg(long, default_value = "netscape")]
     pub format: String,
 
     /// Source to export from. `store` reads the SQLite store
-    /// (default); `chrome` parses a Chromium JSON file.
+    /// (default); `chrome`, `firefox`, or `netscape` parses a
+    /// browser-backed file.
     #[arg(long, default_value = "store")]
     pub source: String,
 
-    /// Path to a source file (required for `--source=chrome`).
+    /// Path to a source file (required for `--source=chrome|firefox|netscape`).
     #[arg(long)]
     pub path: Option<PathBuf>,
 
@@ -37,6 +66,8 @@ pub struct ExportArgs {
 }
 
 pub fn run(args: ExportArgs, _format: crate::Format, paths: Paths) -> Result<i32> {
+    let format: ExportFormat = args.format.parse()?;
+
     let bookmarks = match args.source.as_str() {
         "store" => {
             if !paths.store.exists() {
@@ -62,37 +93,72 @@ pub fn run(args: ExportArgs, _format: crate::Format, paths: Paths) -> Result<i32
             }
             all
         }
-        "chrome" => {
+        other => {
+            // Path-source branch: resolve aliases (brave/vivaldi/edge/arc/opera
+            // collapse to Chromium) via `from_cli_str`, then validate the kind.
+            let kind = linkmarks_core::SourceKind::from_cli_str(other)
+                .ok_or_else(|| anyhow::anyhow!("unknown source '{other}'"))?;
+            if !is_path_source(kind) {
+                bail!(
+                    "unsupported --source '{other}' (try `store` or one of {:?})",
+                    PATH_SOURCE_KINDS
+                );
+            }
             let path = args
                 .path
                 .clone()
-                .ok_or_else(|| anyhow::anyhow!("--path is required for --source=chrome"))?;
-            let src = linkmarks_bridge_chromium::ChromiumSource::open(&path)?;
-            src.list()?
+                .ok_or_else(|| anyhow::anyhow!("--path is required for --source={}", other))?;
+            open_source(kind, &path)?
         }
-        other => bail!("unsupported --source '{other}' (try `store` or `chrome`)"),
     };
 
-    let rendered = match args.format.as_str() {
-        "json" => {
+    match format {
+        ExportFormat::Json => {
+            // NDJSON — one Bookmark per line.
             let mut out = String::new();
             for b in &bookmarks {
                 out.push_str(&serde_json::to_string(b)?);
                 out.push('\n');
             }
-            out
+            write_output(&args.output, &out)?;
         }
-        "netscape" => render_netscape(&bookmarks),
-        other => bail!("unsupported export format '{other}' (v1: netscape, json)"),
-    };
+        ExportFormat::Netscape => {
+            let rendered = render_netscape(&bookmarks);
+            write_output(&args.output, &rendered)?;
+        }
+        ExportFormat::Chrome => {
+            write_chromium(&args.output, &bookmarks)?;
+        }
+    }
 
-    if args.output.as_os_str() == "-" {
+    Ok(crate::exit_codes::OK)
+}
+
+/// Dispatch the rendered string to stdout or to a file path.
+fn write_output(output: &std::path::Path, rendered: &str) -> Result<()> {
+    if output.as_os_str() == "-" {
         print!("{rendered}");
     } else {
-        std::fs::write(&args.output, rendered)
-            .map_err(|e| anyhow::anyhow!("write {}: {e}", args.output.display()))?;
+        std::fs::write(output, rendered)
+            .map_err(|e| anyhow::anyhow!("write {}: {e}", output.display()))?;
     }
-    Ok(crate::exit_codes::OK)
+    Ok(())
+}
+
+/// Emit the bookmarks as Chromium Bookmarks JSON via
+/// `linkmarks-bridge-chromium`'s [`ChromiumSink`]. Atomic write if
+/// the output is a file; stdout is rejected because the sink needs
+/// a destination path.
+fn write_chromium(output: &std::path::Path, bookmarks: &[linkmarks_core::Bookmark]) -> Result<()> {
+    if output.as_os_str() == "-" {
+        bail!(
+            "--format=chrome requires a file path for --output (the sink writes atomically; \
+             pass e.g. --output Bookmarks.json)"
+        );
+    }
+    let (_report, _body) = linkmarks_bridge_chromium::ChromiumSink::write_to(output, bookmarks)
+        .map_err(|e| anyhow::anyhow!("chromium sink: {e}"))?;
+    Ok(())
 }
 
 fn render_netscape(bookmarks: &[linkmarks_core::Bookmark]) -> String {
@@ -136,5 +202,36 @@ mod tests {
     #[test]
     fn html_escape_basic() {
         assert_eq!(html_escape("a&b<c>d\"e"), "a&amp;b&lt;c&gt;d&quot;e");
+    }
+
+    #[test]
+    fn export_format_parses_known_strings() {
+        assert_eq!(
+            ExportFormat::from_str("netscape").unwrap(),
+            ExportFormat::Netscape
+        );
+        assert_eq!(
+            ExportFormat::from_str("html").unwrap(),
+            ExportFormat::Netscape
+        );
+        assert_eq!(ExportFormat::from_str("json").unwrap(), ExportFormat::Json);
+        assert_eq!(
+            ExportFormat::from_str("ndjson").unwrap(),
+            ExportFormat::Json
+        );
+        assert_eq!(
+            ExportFormat::from_str("chrome").unwrap(),
+            ExportFormat::Chrome
+        );
+        assert_eq!(
+            ExportFormat::from_str("chromium").unwrap(),
+            ExportFormat::Chrome
+        );
+    }
+
+    #[test]
+    fn export_format_rejects_unknown() {
+        assert!(ExportFormat::from_str("yaml").is_err());
+        assert!(ExportFormat::from_str("xml").is_err());
     }
 }

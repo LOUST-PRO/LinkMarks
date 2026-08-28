@@ -44,7 +44,11 @@ fn main() {
     for (col, n) in &yrs.per_collection_bytes {
         eprintln!("  {:>16}  {}", col, human_bytes(*n));
     }
-    eprintln!("  {:>16}  {}", "TOTAL encode", human_bytes(yrs.total_encoded_bytes));
+    eprintln!(
+        "  {:>16}  {}",
+        "TOTAL encode",
+        human_bytes(yrs.total_encoded_bytes)
+    );
     eprintln!("  {:>16}  {}", "peak RSS", human_rss(yrs.peak_rss_bytes));
 
     eprintln!();
@@ -63,7 +67,11 @@ fn main() {
     for (col, n) in &am.per_collection_bytes {
         eprintln!("  {:>16}  {}", col, human_bytes(*n));
     }
-    eprintln!("  {:>16}  {}", "TOTAL encode", human_bytes(am.total_encoded_bytes));
+    eprintln!(
+        "  {:>16}  {}",
+        "TOTAL encode",
+        human_bytes(am.total_encoded_bytes)
+    );
     eprintln!("  {:>16}  {}", "peak RSS", human_rss(am.peak_rss_bytes));
 
     eprintln!();
@@ -88,8 +96,10 @@ fn main() {
     );
 
     eprintln!();
-    eprintln!("Note: these are aggregate numbers across {} collection YDocs.",
-        yrs.collection_count);
+    eprintln!(
+        "Note: these are aggregate numbers across {} collection YDocs.",
+        yrs.collection_count
+    );
     eprintln!("Per-collection breakdown is printed above; the encode-comparison");
     eprintln!("writeup cites the median + p95 of `per_collection_bytes` rather than the sum.");
 }

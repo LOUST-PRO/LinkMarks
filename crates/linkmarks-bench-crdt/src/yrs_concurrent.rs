@@ -73,9 +73,18 @@ pub fn measure(thread_count: usize, inserts_per_thread: usize) -> ConcurrencyRep
                     let mut t = doc.transact_mut();
                     let bookmarks_map = t.get_or_insert_map("bookmarks");
                     let tags_map = t.get_or_insert_map("tags_by_bookmark");
-                    let bm = bookmarks_map.insert(&mut t, bookmark_id.as_str(), MapPrelim::default());
-                    bm.insert(&mut t, "original_url", format!("https://contended.example/{tid}/{i}"));
-                    bm.insert(&mut t, "canonical_url", format!("https://contended.example/{tid}/{i}"));
+                    let bm =
+                        bookmarks_map.insert(&mut t, bookmark_id.as_str(), MapPrelim::default());
+                    bm.insert(
+                        &mut t,
+                        "original_url",
+                        format!("https://contended.example/{tid}/{i}"),
+                    );
+                    bm.insert(
+                        &mut t,
+                        "canonical_url",
+                        format!("https://contended.example/{tid}/{i}"),
+                    );
                     bm.insert(&mut t, "title", format!("Contended bookmark {tid}-{i}"));
                     bm.insert(&mut t, "source", "Manual");
                     bm.insert(&mut t, "archived", false);

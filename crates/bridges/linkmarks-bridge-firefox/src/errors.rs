@@ -12,6 +12,17 @@ pub enum BridgeError {
     /// Querying Firefox's Places schema failed.
     #[error("sqlite query: {0}")]
     SqliteQuery(#[source] rusqlite::Error),
+    /// `places.sqlite` was contended by another process (typically a
+    /// running Firefox) and every retry exhausted. Carries the number
+    /// of attempts and the last error string for diagnostics.
+    #[error("places.sqlite locked after {attempts} attempts: {last_error}")]
+    DatabaseLocked {
+        /// Number of attempts that were tried before giving up.
+        attempts: u32,
+        /// String form of the last rusqlite error that signaled
+        /// `SQLITE_BUSY` or `SQLITE_LOCKED`.
+        last_error: String,
+    },
     /// The jsonlz4 magic or size prefix is invalid.
     #[error("jsonlz4 header: {0}")]
     Jsonlz4Header(String),

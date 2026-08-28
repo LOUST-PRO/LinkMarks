@@ -31,9 +31,7 @@ async fn main() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(500);
 
-    let http = reqwest::Client::builder()
-        .build()
-        .expect("reqwest client");
+    let http = reqwest::Client::builder().build().expect("reqwest client");
     eprintln!("[client] connecting to {url}, {n_edits} local edits");
 
     // 1. Health check.

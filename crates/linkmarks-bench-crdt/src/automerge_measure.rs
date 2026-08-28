@@ -10,9 +10,7 @@
 
 use std::collections::BTreeMap;
 
-use automerge::{
-    transaction::Transactable, AutomergeError, Automerge, ObjType, ROOT,
-};
+use automerge::{transaction::Transactable, Automerge, AutomergeError, ObjType, ROOT};
 
 use crate::fixture::BenchBookmark;
 
@@ -28,10 +26,7 @@ pub struct AutomergeReport {
 pub fn measure(bookmarks: &[BenchBookmark]) -> Result<AutomergeReport, AutomergeError> {
     let mut by_collection: BTreeMap<String, Vec<&BenchBookmark>> = BTreeMap::new();
     for b in bookmarks {
-        let col = b
-            .collection
-            .clone()
-            .unwrap_or_else(|| "inbox".to_string());
+        let col = b.collection.clone().unwrap_or_else(|| "inbox".to_string());
         by_collection.entry(col).or_default().push(b);
     }
 
