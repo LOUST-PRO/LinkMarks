@@ -42,19 +42,19 @@ path = "src/bin/http_sync_client.rs"
 
 [dependencies]
 # Reproducible fixture
-rand = "0.8"
-rand_chacha = "0.3"
+rand = "0.10"
+rand_chacha = "0.10"
 
 # Mirror linkmarks-core shape — same dep versions as the main workspace
 chrono = { version = "0.4", features = ["clock"] }
 ulid = "3"
 
 # CRDT candidates (yrs is the one used at the LinkMarks app layer)
-yrs = "0.20"
-automerge = "0.5"
+yrs = "0.27"
+automerge = "0.11"
 
 # HTTP roundtrip suite (see src/bin/http_sync_server.rs + http_sync_client.rs)
-axum = "0.7"
+axum = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
 bytes = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
