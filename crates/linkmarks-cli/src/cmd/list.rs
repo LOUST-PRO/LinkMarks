@@ -42,6 +42,13 @@ pub struct ListArgs {
     /// Offset for pagination. Defaults to 0.
     #[arg(long, default_value = "0")]
     pub offset: usize,
+
+    /// Emit a JSON array to stdout instead of the human-readable table.
+    /// The shape is stable across LinkMarks releases; agents should
+    /// parse it without regex on the table. Conflicts with `--format=json`
+    /// (the global flag); this command-local flag takes precedence.
+    #[arg(long)]
+    pub json: bool,
 }
 
 pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
@@ -50,7 +57,7 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
         .clone()
         .unwrap_or_else(|| default_source_label(&paths.store).to_string());
 
-    match source_label.as_str() {
+    let bookmarks = match source_label.as_str() {
         "store" => {
             if !paths.store.exists() {
                 bail!(
@@ -59,10 +66,7 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
                 );
             }
             let s = store::open(&paths.store)?;
-            let bookmarks = s.list(args.limit.max(1), args.offset)?;
-            let rendered = ui::render(&bookmarks, format)?;
-            print!("{rendered}");
-            Ok(crate::exit_codes::OK)
+            s.list(args.limit.max(1), args.offset)?
         }
         "chrome" | "firefox" | "netscape" | "html" => {
             let kind = linkmarks_core::SourceKind::from_cli_str(source_label.as_str())
@@ -77,16 +81,37 @@ pub fn run(args: ListArgs, format: crate::Format, paths: Paths) -> Result<i32> {
                 Some(p) => p,
                 None => default_path_for(kind)?,
             };
-            let bookmarks = open_source(kind, &path)?;
-            let rendered = ui::render(&bookmarks, format)?;
-            print!("{rendered}");
-            Ok(crate::exit_codes::OK)
+            open_source(kind, &path)?
         }
         other => bail!(
             "unsupported --source '{other}' (try `store` or one of {:?})",
             PATH_SOURCE_KINDS
         ),
+    };
+
+    if args.json {
+        // Stable JSON array shape for agents. The Bookmark struct
+        // already derives Serialize (see linkmarks-core::Bookmark),
+        // so we forward the whole value.
+        let sorted = sorted_bookmarks(&bookmarks);
+        let serialized = serde_json::to_string_pretty(&sorted)?;
+        println!("{serialized}");
+    } else {
+        let rendered = ui::render(&bookmarks, format)?;
+        print!("{rendered}");
     }
+    Ok(crate::exit_codes::OK)
+}
+
+/// Sort + return owned bookmarks in canonical order.
+fn sorted_bookmarks(bookmarks: &[linkmarks_core::Bookmark]) -> Vec<linkmarks_core::Bookmark> {
+    let mut sorted = bookmarks.to_vec();
+    sorted.sort_by(|a, b| {
+        a.canonical_url
+            .cmp(&b.canonical_url)
+            .then_with(|| a.id.0.cmp(&b.id.0))
+    });
+    sorted
 }
 
 /// Decide the default source label: `store` if the DB exists,
@@ -145,5 +170,39 @@ mod tests {
     fn default_chrome_path_uses_home_env() {
         let p = default_chrome_path();
         assert!(p.to_string_lossy().contains("google-chrome"));
+    }
+
+    #[test]
+    fn sorted_bookmarks_orders_by_canonical_then_id() {
+        use chrono::TimeZone;
+        use linkmarks_core::{Bookmark, BookmarkId, SourceKind, SourceRef};
+        let b = |id: &str, url: &str| Bookmark {
+            id: BookmarkId(id.to_string()),
+            original_url: url.to_string(),
+            canonical_url: url.to_string(),
+            title: id.to_string(),
+            description: None,
+            tags: vec![],
+            collection: None,
+            content_type: None,
+            archived: false,
+            created_at: chrono::Utc.timestamp_opt(0, 0).unwrap(),
+            updated_at: chrono::Utc.timestamp_opt(0, 0).unwrap(),
+            source: SourceRef {
+                kind: SourceKind::Manual,
+                external_id: None,
+                imported_at: chrono::Utc.timestamp_opt(0, 0).unwrap(),
+                raw: None,
+            },
+        };
+        let bms = vec![
+            b("b", "https://b"),
+            b("a", "https://a"),
+            b("c", "https://a"),
+        ];
+        let sorted = sorted_bookmarks(&bms);
+        assert_eq!(sorted[0].id.0, "a");
+        assert_eq!(sorted[1].id.0, "c"); // same canonical as a, sorted by id
+        assert_eq!(sorted[2].id.0, "b");
     }
 }

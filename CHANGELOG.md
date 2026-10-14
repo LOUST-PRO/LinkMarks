@@ -4,6 +4,68 @@ All notable changes to this project are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.2] — 2026-08-31
+
+Patch release — agent-friendly reporting across the CLI. Stable JSON
+shapes for `linkmarks export`, `list`, `dedupe`, and `sync` so that
+subagents and scripts can parse results without regex on stderr.
+The human-readable summaries and `--format=table` / `--format=yaml`
+output paths are unchanged (no breaking change to the existing
+CLI surface).
+
+### Added
+- **`linkmarks export --json`.** Emits a stable `ExportReport`
+  struct on stdout describing the operation: tool version, store
+  path, output path, output size in bytes, bookmark / folder /
+  collection / dropped-tag counts, top collections by bookmark
+  count, per-browser import instructions, and wall-clock duration.
+  The bookmark file itself is still written to `--output`. Conflicts
+  with `--output -` (the JSON and the bookmark bytes would
+  collide on the same FD).
+- **`linkmarks export --no-report`.** Suppresses the
+  human-readable summary that the command prints to stderr after a
+  successful write. Useful for cron jobs and other contexts where
+  the JSON or the bookmark file is the only thing that matters.
+- **`linkmarks list --json`.** Emits a stable JSON array of
+  `Bookmark` objects (sorted by canonical URL then id) on stdout
+  instead of the TSV table. The Bookmark shape derives
+  `Serialize` from `linkmarks-core`, so the JSON keys match the
+  struct field names one-for-one.
+- **`linkmarks dedupe --json`.** Emits a stable `DedupeReport`
+  struct on stdout: `before`, `after`, `removed`, `conflicts`,
+  `applied`, and `duration_ms`. Useful for agents that need to
+  confirm a dedupe pass without parsing the human table.
+- **`linkmarks sync --json`.** Emits a stable `SyncReport` struct
+  on stdout: per-collection rows (collection, bookmarks, bytes,
+  fingerprint, slug), aggregate counts, and wall-clock duration.
+  The `--dry-run` flag is still required.
+- **`docs/why-file-based.md`.** New public document explaining
+  the rationale for the file-based import pattern (versus live
+  write-back). Covers the Chromium `BookmarkModel` lifecycle,
+  the absence of an inotify watcher, the deprecated `Page.addBookmark`
+  CDP method, the Web Store distribution constraints of a custom
+  extension, and the destructive nature of auto-restarting the
+  browser. Cross-linked from `linkmarks export --help`.
+- **Improved `linkmarks export --help`.** Adds an after-help block
+  describing the per-browser import flow (Vivaldi/Chrome/Edge/
+  Brave/Arc/Opera vs Firefox), noting that browsers do not
+  auto-detect file changes, and linking to `docs/why-file-based.md`.
+
+### Internal
+- `cmd::export::build_report`, `cmd::dedupe::DedupeReport`, and
+  `cmd::sync::SyncReport` are public for downstream tooling that
+  wants to construct reports programmatically. Their field names
+  are the JSON schema contract and will not change without a
+  major version bump.
+- New tests pin the JSON shapes: `build_report_round_trips_through_json`,
+  `dedupe_report_includes_required_fields`,
+  `sync_report_includes_required_fields`, `default_next_steps_mentions_chromium_family_and_firefox`,
+  `sorted_bookmarks_orders_by_canonical_then_id`,
+  `top_collections_sorts_descending_and_truncates`,
+  `compute_stats_counts_unique_collections_and_tags`,
+  `human_bytes_chooses_unit`. Workspace test count is 354
+  (346 prior + 8 new). All passing.
+
 ## [2.2.1] — 2026-08-25
 
 Patch release — Firefox bridge robustness under live-database contention

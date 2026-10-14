@@ -35,7 +35,9 @@ use crate::Paths;
 use anyhow::{bail, Context, Result};
 use clap::Args;
 use linkmarks_core::store;
+use serde::Serialize;
 use std::path::PathBuf;
+use std::time::Instant;
 
 #[derive(Args, Debug)]
 pub struct SyncArgs {
@@ -58,6 +60,50 @@ pub struct SyncArgs {
     /// (effectively "all bookmarks in one page").
     #[arg(long, default_value = "100000")]
     pub limit: usize,
+
+    /// Emit the sync report as JSON to stdout instead of the
+    /// human-readable summary. The shape is stable across LinkMarks
+    /// releases; agents should parse it without regex on stderr.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// Per-collection row in the sync dry-run report.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct SyncCollectionRow {
+    /// Collection path.
+    pub collection: String,
+    /// Bookmarks under this collection.
+    pub bookmarks: usize,
+    /// Encoded bytes (yrs state vector + update).
+    pub bytes: usize,
+    /// FNV-1a-64 hash of the encoded bytes.
+    pub fingerprint: u64,
+    /// Filesystem-safe slug derived from the collection name.
+    pub slug: String,
+}
+
+/// JSON shape for `--json` output of `linkmarks sync --dry-run`.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct SyncReport {
+    /// Tool version.
+    pub version: &'static str,
+    /// Tool name (`linkmarks sync`).
+    pub tool: &'static str,
+    /// Always `true` in this preview (only `--dry-run` is implemented).
+    pub dry_run: bool,
+    /// Total bookmarks across all collections.
+    pub total_bookmarks: usize,
+    /// Number of sub-docs (one per collection).
+    pub collections: usize,
+    /// Sum of encoded bytes across all sub-docs.
+    pub total_bytes: usize,
+    /// Per-collection breakdown.
+    pub rows: Vec<SyncCollectionRow>,
+    /// Where per-collection files were written, if `--out-dir` was set.
+    pub out_dir: Option<PathBuf>,
+    /// Wall-clock duration in milliseconds.
+    pub duration_ms: u64,
 }
 
 pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> {
@@ -74,10 +120,27 @@ pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> 
         );
     }
 
+    let started = Instant::now();
     let s = store::open(&paths.store).context("open store")?;
     let total = s.count_all().context("count_all")?;
     if total == 0 {
-        println!("(store is empty — nothing to encode)");
+        if args.json {
+            let empty = SyncReport {
+                version: env!("CARGO_PKG_VERSION"),
+                tool: "linkmarks sync",
+                dry_run: true,
+                total_bookmarks: 0,
+                collections: 0,
+                total_bytes: 0,
+                rows: vec![],
+                out_dir: args.out_dir.clone(),
+                duration_ms: started.elapsed().as_millis() as u64,
+            };
+            let serialized = serde_json::to_string_pretty(&empty)?;
+            println!("{serialized}");
+        } else {
+            println!("(store is empty — nothing to encode)");
+        }
         return Ok(crate::exit_codes::OK);
     }
 
@@ -87,6 +150,48 @@ pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> 
     if let Some(out_dir) = &args.out_dir {
         std::fs::create_dir_all(out_dir)
             .with_context(|| format!("create out-dir {}", out_dir.display()))?;
+    }
+
+    let mut grand_total_bytes: usize = 0;
+    let mut grand_total_bookmarks: usize = 0;
+    let mut rows: Vec<SyncCollectionRow> = Vec::with_capacity(by_collection.len());
+    for (collection, items) in &by_collection {
+        let encoded = encode_collection(collection, items);
+        let hash = fnv1a_64(&encoded);
+        let slug = collection_slug(collection);
+        rows.push(SyncCollectionRow {
+            collection: collection.clone(),
+            bookmarks: items.len(),
+            bytes: encoded.len(),
+            fingerprint: hash,
+            slug: slug.clone(),
+        });
+        grand_total_bytes = grand_total_bytes.saturating_add(encoded.len());
+        grand_total_bookmarks = grand_total_bookmarks.saturating_add(items.len());
+
+        if let Some(out_dir) = &args.out_dir {
+            let path = out_dir.join(format!("{slug}.ydoc.bin"));
+            std::fs::write(&path, &encoded).with_context(|| format!("write {}", path.display()))?;
+        }
+    }
+
+    let duration_ms = started.elapsed().as_millis() as u64;
+
+    if args.json {
+        let report = SyncReport {
+            version: env!("CARGO_PKG_VERSION"),
+            tool: "linkmarks sync",
+            dry_run: true,
+            total_bookmarks: grand_total_bookmarks,
+            collections: by_collection.len(),
+            total_bytes: grand_total_bytes,
+            rows,
+            out_dir: args.out_dir.clone(),
+            duration_ms,
+        };
+        let serialized = serde_json::to_string_pretty(&report)?;
+        println!("{serialized}");
+        return Ok(crate::exit_codes::OK);
     }
 
     println!(
@@ -104,27 +209,15 @@ pub fn run(args: SyncArgs, _format: crate::Format, paths: Paths) -> Result<i32> 
     );
     println!("{}", "-".repeat(80));
 
-    let mut grand_total_bytes: usize = 0;
-    let mut grand_total_bookmarks: usize = 0;
-    for (collection, items) in &by_collection {
-        let encoded = encode_collection(collection, items);
-        let hash = fnv1a_64(&encoded);
-        let slug = collection_slug(collection);
+    for row in &rows {
         println!(
             "{:<24} {:>10} {:>12} {:>16x}  {}",
-            truncate(collection, 24),
-            items.len(),
-            encoded.len(),
-            hash,
-            slug
+            truncate(&row.collection, 24),
+            row.bookmarks,
+            row.bytes,
+            row.fingerprint,
+            row.slug
         );
-        grand_total_bytes = grand_total_bytes.saturating_add(encoded.len());
-        grand_total_bookmarks = grand_total_bookmarks.saturating_add(items.len());
-
-        if let Some(out_dir) = &args.out_dir {
-            let path = out_dir.join(format!("{slug}.ydoc.bin"));
-            std::fs::write(&path, &encoded).with_context(|| format!("write {}", path.display()))?;
-        }
     }
 
     println!("{}", "-".repeat(80));
@@ -267,5 +360,35 @@ mod tests {
         let b = fnv1a_64(b"hello");
         assert_eq!(a, b);
         assert_ne!(a, fnv1a_64(b"hellp"));
+    }
+
+    #[test]
+    fn sync_report_includes_required_fields() {
+        // Schema spot-check: the JSON shape must contain the
+        // stable field names agents rely on.
+        let r = SyncReport {
+            version: "2.2.2",
+            tool: "linkmarks sync",
+            dry_run: true,
+            total_bookmarks: 1208,
+            collections: 47,
+            total_bytes: 65536,
+            rows: vec![SyncCollectionRow {
+                collection: "work".to_string(),
+                bookmarks: 487,
+                bytes: 1024,
+                fingerprint: 0xdead_beef,
+                slug: "work".to_string(),
+            }],
+            out_dir: None,
+            duration_ms: 85,
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        assert!(json.contains("\"tool\":\"linkmarks sync\""));
+        assert!(json.contains("\"dry_run\":true"));
+        assert!(json.contains("\"total_bookmarks\":1208"));
+        assert!(json.contains("\"collections\":47"));
+        assert!(json.contains("\"total_bytes\":65536"));
+        assert!(json.contains("\"duration_ms\":85"));
     }
 }

@@ -14,7 +14,9 @@ use anyhow::{bail, Result};
 use clap::Args;
 use linkmarks_core::dedupe as core_dedupe;
 use linkmarks_core::store;
+use serde::Serialize;
 use std::path::PathBuf;
+use std::time::Instant;
 
 #[derive(Args, Debug)]
 pub struct DedupeArgs {
@@ -40,9 +42,37 @@ pub struct DedupeArgs {
     /// tighten rules for a specific host.
     #[arg(long)]
     pub refresh_canonical: bool,
+
+    /// Emit the dedupe report as JSON to stdout instead of the
+    /// human-readable summary. The shape is stable across LinkMarks
+    /// releases; agents should parse it without regex on stderr.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// JSON shape for `--json` output of `linkmarks dedupe`.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct DedupeReport {
+    /// Tool version.
+    pub version: &'static str,
+    /// Tool name (`linkmarks dedupe`).
+    pub tool: &'static str,
+    /// Bookmark count before dedupe.
+    pub before: usize,
+    /// Canonical bookmark count after dedupe.
+    pub after: usize,
+    /// How many bookmarks were merged into a canonical row.
+    pub removed: usize,
+    /// How many merge conflicts surfaced (non-fatal).
+    pub conflicts: usize,
+    /// Whether `--apply` was passed.
+    pub applied: bool,
+    /// Wall-clock duration in milliseconds.
+    pub duration_ms: u64,
 }
 
 pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32> {
+    let started = Instant::now();
     let bookmarks = match args.source.as_str() {
         "store" => {
             if !paths.store.exists() {
@@ -90,36 +120,59 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
         ),
     };
 
+    let before_count = bookmarks.len();
     let (canonical, report) = core_dedupe(&bookmarks);
+    let after_count = canonical.len();
+    let removed = before_count.saturating_sub(after_count);
+    let duration_ms = started.elapsed().as_millis() as u64;
 
-    match format {
-        crate::Format::Table => {
-            println!(
-                "canonical_count={} merged={} conflicts={}",
-                report.canonical_count,
-                report.merged_count,
-                report.conflicts.len()
-            );
-            for c in &report.conflicts {
+    if args.json {
+        // Machine-readable path. The report struct is stable; agents
+        // should parse it without regex on stderr.
+        let json_report = DedupeReport {
+            version: env!("CARGO_PKG_VERSION"),
+            tool: "linkmarks dedupe",
+            before: before_count,
+            after: after_count,
+            removed,
+            conflicts: report.conflicts.len(),
+            applied: args.apply,
+            duration_ms,
+        };
+        let serialized = serde_json::to_string_pretty(&json_report)?;
+        println!("{serialized}");
+    } else {
+        match format {
+            crate::Format::Table => {
                 println!(
-                    "- {}\n    chosen={}\n    conflicting={:?}\n    differing_fields={:?}",
-                    c.canonical_url, c.chosen_id, c.conflicting_ids, c.differing_fields
+                    "canonical_count={} merged={} conflicts={}",
+                    report.canonical_count,
+                    report.merged_count,
+                    report.conflicts.len()
                 );
+                for c in &report.conflicts {
+                    println!(
+                        "- {}\n    chosen={}\n    conflicting={:?}\n    differing_fields={:?}",
+                        c.canonical_url, c.chosen_id, c.conflicting_ids, c.differing_fields
+                    );
+                }
             }
-        }
-        crate::Format::Json => {
-            let mut out = serde_json::to_string_pretty(&report)?;
-            out.push('\n');
-            print!("{out}");
-        }
-        crate::Format::Yaml => {
-            let value = serde_yaml::to_string(&report)?;
-            print!("{value}");
+            crate::Format::Json => {
+                let mut out = serde_json::to_string_pretty(&report)?;
+                out.push('\n');
+                print!("{out}");
+            }
+            crate::Format::Yaml => {
+                let value = serde_yaml::to_string(&report)?;
+                print!("{value}");
+            }
         }
     }
 
     if !args.apply {
-        eprintln!("(dry-run; pass --apply to write)");
+        if !args.json {
+            eprintln!("(dry-run; pass --apply to write)");
+        }
         if report.conflicts.is_empty() {
             return Ok(crate::exit_codes::OK);
         }
@@ -153,5 +206,34 @@ pub fn run(args: DedupeArgs, format: crate::Format, paths: Paths) -> Result<i32>
         Ok(crate::exit_codes::OK)
     } else {
         Ok(crate::exit_codes::DEDUPE_CONFLICTS)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dedupe_report_includes_required_fields() {
+        // Schema spot-check: the JSON shape must contain the
+        // stable field names agents rely on.
+        let r = DedupeReport {
+            version: "2.2.2",
+            tool: "linkmarks dedupe",
+            before: 100,
+            after: 92,
+            removed: 8,
+            conflicts: 0,
+            applied: false,
+            duration_ms: 12,
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        assert!(json.contains("\"tool\":\"linkmarks dedupe\""));
+        assert!(json.contains("\"before\":100"));
+        assert!(json.contains("\"after\":92"));
+        assert!(json.contains("\"removed\":8"));
+        assert!(json.contains("\"conflicts\":0"));
+        assert!(json.contains("\"applied\":false"));
+        assert!(json.contains("\"duration_ms\":12"));
     }
 }
