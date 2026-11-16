@@ -21,7 +21,7 @@ chrono.workspace = true
 ulid.workspace = true
 tracing.workspace = true
 rusqlite.workspace = true
-dirs = "6"
+dirs = "7"
 toml = "1.1"
 
 [dev-dependencies]
